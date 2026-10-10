@@ -1,14 +1,15 @@
-<!-- The Echo mark: an "e" and the two echoes it sends out. Tinted in code; the echoes keep their fade. -->
+<!-- The Echo mark: a keyhole and the two echoes rippling out from it. Tinted in code; the rings keep their fade. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="48dp" android:height="48dp"
-    android:viewportWidth="48" android:viewportHeight="48">
-    <path android:pathData="M25.23,24.00 A10.38,10.38 0 1,0 21.80,31.72 M4.47,24.00 H25.23"
-        android:strokeColor="#FFFFFFFF" android:strokeWidth="4.93"
-        android:strokeAlpha="1.0" android:strokeLineCap="round" />
-    <path android:pathData="M29.32,37.03 A19.47,19.47 0 0,0 29.32,10.97"
-        android:strokeColor="#FFFFFFFF" android:strokeWidth="3.89"
-        android:strokeAlpha="0.55" android:strokeLineCap="round" />
-    <path android:pathData="M36.94,41.26 A28.04,28.04 0 0,0 36.94,6.74"
-        android:strokeColor="#FFFFFFFF" android:strokeWidth="3.12"
-        android:strokeAlpha="0.25" android:strokeLineCap="round" />
+    android:viewportWidth="132" android:viewportHeight="132">
+    <path android:pathData="M30.5,73.02 A41,41 0 1,1 101.5,73.02 L104.57,89.81 A26,26 0 0,1 79,120.5 L53,120.5 A26,26 0 0,1 27.43,89.81 Z M35.77,72.04 A36,36 0 1,1 96.23,72.04 L99.66,90.71 A21,21 0 0,1 79,115.5 L53,115.5 A21,21 0 0,1 32.34,90.71 Z"
+        android:fillColor="#FFFFFFFF"
+        android:fillAlpha="0.3"
+        android:fillType="evenOdd" />
+    <path android:pathData="M43.18,70.4 A29,29 0 1,1 88.82,70.4 L92.77,91.98 A14,14 0 0,1 79,108.5 L53,108.5 A14,14 0 0,1 39.23,91.98 Z M49.07,68.8 A23.5,23.5 0 1,1 82.93,68.8 L87.36,92.97 A8.5,8.5 0 0,1 79,103 L53,103 A8.5,8.5 0 0,1 44.64,92.97 Z"
+        android:fillColor="#FFFFFFFF"
+        android:fillAlpha="0.6"
+        android:fillType="evenOdd" />
+    <path android:pathData="M56.68,66.11 A16.5,16.5 0 1,1 75.32,66.11 L80.48,94.23 A1.5,1.5 0 0,1 79,96 L53,96 A1.5,1.5 0 0,1 51.52,94.23 Z"
+        android:fillColor="#FFFFFFFF" />
 </vector>

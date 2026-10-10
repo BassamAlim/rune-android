@@ -6,7 +6,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
 /**
- * Echo is dark-only by design: no light scheme, and no dynamic colour: the green is the app's
+ * Echo is dark-only by design: no light scheme, and no dynamic colour: the amber is the app's
  * one recognisable signal and Material You would take it away.
  */
 private val EchoColorScheme = darkColorScheme(

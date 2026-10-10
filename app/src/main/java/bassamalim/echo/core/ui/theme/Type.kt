@@ -12,14 +12,14 @@ import androidx.compose.ui.unit.sp
 import bassamalim.echo.R
 
 @OptIn(ExperimentalTextApi::class)
-private fun inter(weight: Int) = Font(
-    resId = R.font.inter,
+private fun spaceGrotesk(weight: Int) = Font(
+    resId = R.font.space_grotesk,
     weight = FontWeight(weight),
     variationSettings = FontVariation.Settings(FontVariation.weight(weight))
 )
 
-/** Inter, bundled as a variable font and instanced at the weights the system uses. */
-val Inter = FontFamily(inter(400), inter(500), inter(600), inter(700))
+/** Space Grotesk, bundled as a variable font and instanced at the weights the system uses. */
+val SpaceGrotesk = FontFamily(spaceGrotesk(400), spaceGrotesk(500), spaceGrotesk(600), spaceGrotesk(700))
 
 @OptIn(ExperimentalTextApi::class)
 private fun jetBrainsMono(weight: Int) = Font(
@@ -38,7 +38,7 @@ val JetBrainsMono = FontFamily(jetBrainsMono(400), jetBrainsMono(500))
 val Typography = Typography(
     // Screen titles: "Echo", "Settings".
     headlineMedium = TextStyle(
-        fontFamily = Inter,
+        fontFamily = SpaceGrotesk,
         fontWeight = FontWeight(700),
         fontSize = 26.sp,
         lineHeight = 32.sp,
@@ -46,55 +46,55 @@ val Typography = Typography(
     ),
     // Top-bar titles and the site name on its own screen.
     titleLarge = TextStyle(
-        fontFamily = Inter,
+        fontFamily = SpaceGrotesk,
         fontWeight = FontWeight(600),
         fontSize = 20.sp,
         lineHeight = 26.sp
     ),
     // Site names in the list; card headers.
     titleMedium = TextStyle(
-        fontFamily = Inter,
+        fontFamily = SpaceGrotesk,
         fontWeight = FontWeight(600),
         fontSize = 16.sp,
         lineHeight = 22.sp
     ),
     // Text the user types.
     bodyLarge = TextStyle(
-        fontFamily = Inter,
+        fontFamily = SpaceGrotesk,
         fontWeight = FontWeight(400),
         fontSize = 16.sp,
         lineHeight = 24.sp
     ),
     // Descriptions and explanations.
     bodyMedium = TextStyle(
-        fontFamily = Inter,
+        fontFamily = SpaceGrotesk,
         fontWeight = FontWeight(400),
         fontSize = 15.sp,
         lineHeight = 22.sp
     ),
     // Helper text, logins under a site name.
     bodySmall = TextStyle(
-        fontFamily = Inter,
+        fontFamily = SpaceGrotesk,
         fontWeight = FontWeight(400),
         fontSize = 13.sp,
         lineHeight = 18.sp
     ),
     // Buttons.
     labelLarge = TextStyle(
-        fontFamily = Inter,
+        fontFamily = SpaceGrotesk,
         fontWeight = FontWeight(600),
         fontSize = 15.sp,
         lineHeight = 20.sp
     ),
     // Field labels, chips.
     labelMedium = TextStyle(
-        fontFamily = Inter,
+        fontFamily = SpaceGrotesk,
         fontWeight = FontWeight(500),
         fontSize = 13.sp,
         lineHeight = 18.sp
     ),
     labelSmall = TextStyle(
-        fontFamily = Inter,
+        fontFamily = SpaceGrotesk,
         fontWeight = FontWeight(500),
         fontSize = 12.sp,
         lineHeight = 16.sp

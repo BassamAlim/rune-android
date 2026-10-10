@@ -41,7 +41,6 @@ import bassamalim.echo.core.ui.components.UnlockPrompts
 import bassamalim.echo.core.ui.theme.Accent
 import bassamalim.echo.core.ui.theme.AccentWash
 import bassamalim.echo.core.ui.theme.InkMuted
-import bassamalim.echo.core.ui.theme.Pill
 import bassamalim.echo.core.ui.theme.Sizes
 import bassamalim.echo.core.ui.theme.Spacing
 import androidx.compose.foundation.background
@@ -93,7 +92,7 @@ internal fun AutofillScreen(
                 title = "Fill with Echo",
                 leading = {
                     Icon(
-                        painter = painterResource(R.drawable.ic_echo_mark),
+                        painter = painterResource(R.drawable.ic_echo_mark_small),
                         contentDescription = null,
                         tint = Accent,
                         modifier = Modifier.size(32.dp)
@@ -147,7 +146,7 @@ private fun Picker(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.md)
                 ) {
                     Box(
-                        modifier = Modifier.size(Sizes.avatar).clip(Pill).background(AccentWash),
+                        modifier = Modifier.size(Sizes.avatar).clip(MaterialTheme.shapes.medium).background(AccentWash),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(

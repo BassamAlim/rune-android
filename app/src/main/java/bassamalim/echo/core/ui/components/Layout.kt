@@ -37,7 +37,6 @@ import bassamalim.echo.core.ui.theme.Accent
 import bassamalim.echo.core.ui.theme.AccentWash
 import bassamalim.echo.core.ui.theme.Danger
 import bassamalim.echo.core.ui.theme.InkMuted
-import bassamalim.echo.core.ui.theme.Pill
 import bassamalim.echo.core.ui.theme.Sizes
 import bassamalim.echo.core.ui.theme.Spacing
 import bassamalim.echo.core.ui.theme.Surface0
@@ -140,13 +139,13 @@ fun CardTitle(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** The site's first letter in a tinted circle. Decoration: the name is right beside it. */
+/** The site's first letter on a tinted tile. Decoration: the name is right beside it. */
 @Composable
 fun Avatar(name: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(Sizes.avatar)
-            .clip(Pill)
+            .clip(MaterialTheme.shapes.medium)
             .background(AccentWash)
             .clearAndSetSemantics {},
         contentAlignment = Alignment.Center

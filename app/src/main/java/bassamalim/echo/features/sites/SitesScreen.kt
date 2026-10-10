@@ -72,10 +72,10 @@ internal fun SitesScreen(
             scrollable = false,
             topBar = {
                 TopBar(
-                    title = "Echo",
+                    title = "echo",
                     leading = {
                         Icon(
-                            painter = painterResource(R.drawable.ic_echo_mark),
+                            painter = painterResource(R.drawable.ic_echo_mark_small),
                             contentDescription = null,
                             tint = Accent,
                             modifier = Modifier.size(32.dp)
