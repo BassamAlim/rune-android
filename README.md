@@ -1,11 +1,36 @@
-# Echo (Android)
+<p align="center">
+  <img src="docs/images/logo.svg" width="96" alt="Echo logo" />
+</p>
 
-A deterministic password generator. One master password and a secret key become a different
-password for every site; no password is ever stored, and the app has no internet permission.
-The desktop app is in `echo-desktop` and produces the same passwords.
+<h1 align="center">Echo</h1>
 
-The algorithm and data formats are specified in `echo-desktop/SPEC.md`.
-`app/src/test/resources/vectors.json` is a copy of that repo's shared test data.
+<p align="center">
+  <b>A deterministic password generator for Android.</b><br />
+  One master password and a secret key become a different password for every site. No password is ever stored.
+</p>
+
+![The site list, a site's password, the site editor and settings](docs/images/screens.png)
+
+<sub>Rendered from the app's own screens by its screenshot test, not captured on a phone.</sub>
+
+The desktop app is in [`echo-desktop`](https://github.com/BassamAlim/echo-desktop) and produces
+the same passwords. The algorithm and file formats are specified in that repo's `SPEC.md`;
+`app/src/test/resources/vectors.json` is a copy of its shared test data.
+
+## Features
+
+- **Nothing to steal.** Passwords are worked out from your master password, a secret key held
+  on the phone, and the site's name. They are never stored.
+- **No internet permission.** Nothing Echo knows can leave the phone.
+- **Fingerprint for every password.** Your master password is typed once at setup. After that
+  each password asks for your fingerprint, with the master password as the fallback.
+- **Autofill.** Echo fills login forms in apps and browsers directly, skipping the clipboard.
+  In a browser it only offers a password on the site it belongs to.
+- **Per-site settings.** Length, which kinds of character, and a counter you raise to get a
+  new password for that site.
+- **Same passwords on your desktop.** Set both apps up with the same master password and secret
+  key; the four-character fingerprint shows they match.
+- **Export and import.** The site list is one JSON file, shared with the desktop app.
 
 ## Commands
 
@@ -24,5 +49,4 @@ The screenshots land in `app/build/screenshots/`.
 3. Turn on autofill in Settings to have Echo fill login forms directly.
 
 To use the same passwords on the desktop app, set it up with the same master password and type
-in the secret key. The four-character fingerprint must match on both. Move the site list across
-with Export and Import in Settings.
+in the secret key. Move the site list across with Export and Import in Settings.
