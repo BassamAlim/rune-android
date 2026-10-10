@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Echo design tokens. Compose reads core/ui/theme/Color.kt; these exist for the few places
+     only a resource will do: the launcher icon, the window background, the autofill rows. -->
+<resources>
+    <color name="surface_0">#FF0F172A</color>
+    <color name="surface_100">#FF192134</color>
+    <color name="ink">#FFF1F5F9</color>
+    <color name="ink_muted">#FF94A3B8</color>
+    <color name="accent">#FF34D399</color>
+</resources>

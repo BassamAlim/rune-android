@@ -1,0 +1,14 @@
+<!-- The Echo mark: an "e" and the two echoes it sends out. Tinted in code; the echoes keep their fade. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+    <path android:pathData="M25.23,24.00 A10.38,10.38 0 1,0 21.80,31.72 M4.47,24.00 H25.23"
+        android:strokeColor="#FFFFFFFF" android:strokeWidth="4.93"
+        android:strokeAlpha="1.0" android:strokeLineCap="round" />
+    <path android:pathData="M29.32,37.03 A19.47,19.47 0 0,0 29.32,10.97"
+        android:strokeColor="#FFFFFFFF" android:strokeWidth="3.89"
+        android:strokeAlpha="0.55" android:strokeLineCap="round" />
+    <path android:pathData="M36.94,41.26 A28.04,28.04 0 0,0 36.94,6.74"
+        android:strokeColor="#FFFFFFFF" android:strokeWidth="3.12"
+        android:strokeAlpha="0.25" android:strokeLineCap="round" />
+</vector>

@@ -1,0 +1,14 @@
+<!-- The Echo mark on the 108dp adaptive-icon canvas, kept inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M55.12,54.00 A9.44,9.44 0 1,0 52.00,61.01 M36.24,54.00 H55.12"
+        android:strokeColor="@color/accent" android:strokeWidth="4.48"
+        android:strokeAlpha="1.0" android:strokeLineCap="round" />
+    <path android:pathData="M58.83,65.84 A17.70,17.70 0 0,0 58.83,42.16"
+        android:strokeColor="@color/accent" android:strokeWidth="3.54"
+        android:strokeAlpha="0.55" android:strokeLineCap="round" />
+    <path android:pathData="M65.77,69.69 A25.49,25.49 0 0,0 65.77,38.31"
+        android:strokeColor="@color/accent" android:strokeWidth="2.83"
+        android:strokeAlpha="0.25" android:strokeLineCap="round" />
+</vector>
