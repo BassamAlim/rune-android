@@ -3,7 +3,7 @@
 
     <!-- Dark-only, matching the Compose theme, and painted before the first frame so there is
          no white flash on cold start. -->
-    <style name="Theme.Echo" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.Rune" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/surface_0</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:statusBarColor">@android:color/transparent</item>

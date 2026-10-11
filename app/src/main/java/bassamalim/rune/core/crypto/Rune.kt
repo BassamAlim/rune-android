@@ -1,0 +1,160 @@
+package bassamalim.rune.core.crypto
+
+import org.bouncycastle.crypto.generators.Argon2BytesGenerator
+import org.bouncycastle.crypto.params.Argon2Parameters
+import java.text.Normalizer
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
+import kotlin.math.ln
+
+/**
+ * The `echo/v1` algorithm. SPEC.md §2 in the rune-desktop repo is the contract, and this must
+ * match it byte for byte: the same `vectors.json` is asserted by both apps.
+ */
+object Rune {
+
+    const val KEY_BYTES = 32
+    const val MIN_LENGTH = 4
+    const val MAX_LENGTH = 64
+    const val DEFAULT_LENGTH = 20
+    const val ALL_CLASSES = "luds"
+
+    private const val LOWER = "abcdefghijklmnopqrstuvwxyz"
+    private const val UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    private const val DIGITS = "0123456789"
+    private const val SYMBOLS = "!@#$%^&*-_=+?"
+    private const val BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+
+    /** In the fixed order the charset is built in, however `classes` is written. */
+    private val CLASSES = listOf('l' to LOWER, 'u' to UPPER, 'd' to DIGITS, 's' to SYMBOLS)
+
+    private fun nfkc(text: String) = Normalizer.normalize(text, Normalizer.Form.NFKC)
+
+    private fun hmac(key: ByteArray, vararg parts: ByteArray): ByteArray {
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(SecretKeySpec(key, "HmacSHA256"))
+        parts.forEach(mac::update)
+        return mac.doFinal()
+    }
+
+    private fun u32(value: Int) = byteArrayOf(
+        (value ushr 24).toByte(), (value ushr 16).toByte(), (value ushr 8).toByte(), value.toByte()
+    )
+
+    /** §2.2: how site and login names are canonicalised before derivation. */
+    fun normalize(text: String): String = nfkc(text).trim().lowercase()
+
+    /** §2.1: slow on purpose (64 MiB, seconds on a phone). Run once at setup, off the main thread. */
+    fun masterKey(masterPassword: String, secretKey: ByteArray): ByteArray {
+        val parameters = Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
+            .withVersion(Argon2Parameters.ARGON2_VERSION_13)
+            .withMemoryAsKB(65536)
+            .withIterations(3)
+            .withParallelism(4)
+            .withSalt(secretKey)
+            .build()
+        val password = nfkc(masterPassword).toByteArray(Charsets.UTF_8)
+        val key = ByteArray(KEY_BYTES)
+
+        Argon2BytesGenerator().apply { init(parameters) }.generateBytes(password, key)
+        password.fill(0)
+        return key
+    }
+
+    /** §2.2 */
+    fun siteKey(masterKey: ByteArray, site: String, login: String, counter: Int): ByteArray {
+        val siteBytes = normalize(site).toByteArray(Charsets.UTF_8)
+        val loginBytes = normalize(login).toByteArray(Charsets.UTF_8)
+
+        return hmac(
+            masterKey,
+            "echo/v1".toByteArray(Charsets.UTF_8),
+            u32(siteBytes.size), siteBytes,
+            u32(loginBytes.size), loginBytes,
+            u32(counter)
+        )
+    }
+
+    /** §2.3: `classes` is any non-empty subset of "luds" (lower, upper, digits, symbols). */
+    fun password(siteKey: ByteArray, length: Int, classes: String): String {
+        require(length in MIN_LENGTH..MAX_LENGTH) { "length $length not in $MIN_LENGTH..$MAX_LENGTH" }
+        require(classes.isNotEmpty() && classes.all { it in ALL_CLASSES }) {
+            "classes \"$classes\" must be a non-empty subset of \"$ALL_CLASSES\""
+        }
+
+        val enabled = CLASSES.filter { it.first in classes }.map { it.second }
+        val charset = enabled.joinToString("")
+        val limit = 256 - 256 % charset.length
+
+        var block = 0
+        var buffer = ByteArray(0)
+        var position = 0
+        fun nextByte(): Int {
+            if (position == buffer.size) {
+                buffer = hmac(siteKey, u32(block++))
+                position = 0
+            }
+            return buffer[position++].toInt() and 0xFF
+        }
+
+        while (true) {
+            val candidate = StringBuilder(length)
+            while (candidate.length < length) {
+                val byte = nextByte()
+                // Rejection sampling: a plain modulo would favour the start of the charset.
+                if (byte < limit) candidate.append(charset[byte % charset.length])
+            }
+            if (enabled.all { set -> candidate.any { it in set } }) return candidate.toString()
+        }
+    }
+
+    /** §2.4: four hex digits that every device with the same key shows. */
+    fun fingerprint(masterKey: ByteArray): String =
+        hmac(masterKey, "echo/v1/check".toByteArray(Charsets.UTF_8))
+            .take(2)
+            .joinToString("") { "%02x".format(it) }
+
+    /** Roughly how strong a policy is, in bits (ignores the small loss from requiring every class). */
+    fun entropyBits(length: Int, classes: String): Double {
+        val size = CLASSES.filter { it.first in classes }.sumOf { it.second.length }
+        return if (size == 0) 0.0 else length * ln(size.toDouble()) / ln(2.0)
+    }
+
+    /** §1: the secret key as text: RFC 4648 Base32, no padding, in groups of four. */
+    fun encodeSecretKey(key: ByteArray): String {
+        val text = StringBuilder()
+        var bits = 0
+        var held = 0
+        for (byte in key) {
+            bits = (bits shl 8) or (byte.toInt() and 0xFF)
+            held += 8
+            while (held >= 5) {
+                held -= 5
+                text.append(BASE32[(bits ushr held) and 31])
+            }
+        }
+        if (held > 0) text.append(BASE32[(bits shl (5 - held)) and 31])
+        return text.chunked(4).joinToString(" ")
+    }
+
+    /** Accepts any case and ignores spaces, dashes and other separators. Null when it isn't a key. */
+    fun decodeSecretKey(text: String): ByteArray? {
+        val letters = text.filter { it.isLetterOrDigit() && it.code < 128 }.uppercase()
+        val bytes = ArrayList<Byte>()
+        var bits = 0
+        var held = 0
+        for (letter in letters) {
+            val value = BASE32.indexOf(letter)
+            if (value < 0) return null
+            bits = ((bits shl 5) or value) and 0xFFFF
+            held += 5
+            if (held >= 8) {
+                held -= 8
+                bytes.add((bits ushr held).toByte())
+            }
+        }
+        // Leftover bits must be zero padding, never part of a mistyped character.
+        if (held >= 5 || (bits and ((1 shl held) - 1)) != 0) return null
+        return bytes.toByteArray().takeIf { it.size == KEY_BYTES }
+    }
+}

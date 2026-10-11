@@ -1,0 +1,10 @@
+<!-- The Rune mark: ᚱ, the R rune. Tinted in code. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="132" android:viewportHeight="132">
+    <path android:pathData="M50,28 V104 M50,28 L82,48 L50,68 L84,104"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="12"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

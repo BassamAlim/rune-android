@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Echo design tokens. Compose reads core/ui/theme/Color.kt; these exist for the few places
+<!-- Rune design tokens. Compose reads core/ui/theme/Color.kt; these exist for the few places
      only a resource will do: the launcher icon, the window background, the autofill rows. -->
 <resources>
     <color name="surface_0">#FF0D0B09</color>

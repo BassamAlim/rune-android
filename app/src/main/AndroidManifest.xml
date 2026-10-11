@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- No INTERNET permission, on purpose: nothing Echo knows can leave the phone. -->
+    <!-- No INTERNET permission, on purpose: nothing Rune knows can leave the phone. -->
 
     <!-- The fingerprint prompt that guards every password. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
@@ -16,13 +16,13 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Echo"
+        android:theme="@style/Theme.Rune"
         tools:targetApi="31">
 
         <activity
             android:name=".core.Activity"
             android:exported="true"
-            android:theme="@style/Theme.Echo"
+            android:theme="@style/Theme.Rune"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -37,11 +37,11 @@
             android:excludeFromRecents="true"
             android:exported="false"
             android:taskAffinity=""
-            android:theme="@style/Theme.Echo"
+            android:theme="@style/Theme.Rune"
             android:windowSoftInputMode="adjustResize" />
 
         <service
-            android:name=".core.autofill.EchoAutofillService"
+            android:name=".core.autofill.RuneAutofillService"
             android:exported="true"
             android:label="@string/autofill_service_label"
             android:permission="android.permission.BIND_AUTOFILL_SERVICE">

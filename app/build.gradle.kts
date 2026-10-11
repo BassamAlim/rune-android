@@ -20,13 +20,13 @@ val envProperties = Properties().apply {
 val hasReleaseKeystore = !envProperties.getProperty("KEYSTORE_PATH").isNullOrBlank()
 
 android {
-    namespace = "bassamalim.echo"
+    namespace = "bassamalim.rune"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "bassamalim.echo"
+        applicationId = "bassamalim.rune"
         // 30 is where a Keystore key can demand a fresh biometric for every single use.
         minSdk = 30
         targetSdk = 37

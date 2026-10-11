@@ -16,7 +16,7 @@
         android:layout_width="24dp"
         android:layout_height="24dp"
         android:importantForAccessibility="no"
-        android:src="@drawable/ic_echo_mark_small"
+        android:src="@drawable/ic_rune_mark"
         android:tint="@color/accent"
         tools:ignore="UseAppTint" />
 
