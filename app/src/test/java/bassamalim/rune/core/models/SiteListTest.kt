@@ -1,10 +1,24 @@
 package bassamalim.rune.core.models
 
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class SiteListTest {
+
+    @Test
+    fun `the previous password is the one at the counter before, and the key is zeroed`() {
+        val site = Site(site = "github.com", login = "bassam", counter = 2)
+        val key = ByteArray(32) { 7 }
+
+        val now = site.passwords(key).getOrThrow()
+        assertArrayEquals(ByteArray(32), key)
+
+        assertEquals(site.copy(counter = 1).passwords(ByteArray(32) { 7 }).getOrThrow().current, now.previous)
+        assertNull(site.copy(counter = 1).passwords(ByteArray(32) { 7 }).getOrThrow().previous)
+    }
 
     @Test
     fun `adding normalises, sorts and refuses duplicates`() {

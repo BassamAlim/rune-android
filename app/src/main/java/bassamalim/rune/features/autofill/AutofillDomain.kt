@@ -5,7 +5,7 @@ import bassamalim.rune.core.crypto.Rune
 import bassamalim.rune.core.data.repositories.SitesRepository
 import bassamalim.rune.core.models.Site
 import bassamalim.rune.core.models.SiteKey
-import bassamalim.rune.core.models.password
+import bassamalim.rune.core.models.passwords
 import javax.inject.Inject
 
 class AutofillDomain @Inject constructor(private val sitesRepository: SitesRepository) {
@@ -35,5 +35,6 @@ class AutofillDomain @Inject constructor(private val sitesRepository: SitesRepos
         if (!SiteMatcher.isBrowser(packageName)) sitesRepository.linkApp(key, packageName)
     }
 
-    fun password(masterKey: ByteArray, site: Site): Result<String> = site.password(masterKey)
+    fun password(masterKey: ByteArray, site: Site): Result<String> =
+        site.passwords(masterKey).map { it.current }
 }

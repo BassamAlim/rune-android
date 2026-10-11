@@ -14,10 +14,13 @@ data class EditorUiState(
     val upper: Boolean = true,
     val digits: Boolean = true,
     val symbols: Boolean = true,
+    /** The symbols this site allows, as typed; canonicalised on save. */
+    val symbolSet: String = Rune.DEFAULT_SYMBOLS,
     /** "about 125 bits" */
     val strength: String = "",
     val siteError: String? = null,
     val classesError: String? = null,
+    val symbolsError: String? = null,
     /** A failure that isn't about one field, e.g. the file couldn't be written. */
     val saveError: String? = null,
     val isConfirmingDelete: Boolean = false

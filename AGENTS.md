@@ -62,7 +62,7 @@ Rules that matter:
   those bytes are hashed into every password and the fingerprint. Every other "echo" in the
   code is a missed rename.
 - **The master key is used once and zeroed.** Whoever receives it from `Unlocker` passes it to
-  `Site.password(masterKey)`, which zeroes it. Don't keep it in state, and don't log.
+  `Site.passwords(masterKey)`, which zeroes it. Don't keep it in state, and don't log.
 - **Every password needs its own authentication.** The biometric Keystore key has a zero-second
   validity; there is no "unlocked" session. `SiteViewModel.onHidden` forgets the password when
   the screen stops.

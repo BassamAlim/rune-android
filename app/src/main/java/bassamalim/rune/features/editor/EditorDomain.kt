@@ -17,6 +17,6 @@ class EditorDomain @Inject constructor(private val sitesRepository: SitesReposit
 
     suspend fun delete(key: SiteKey): Result<Unit> = sitesRepository.delete(key)
 
-    fun strength(length: Int, classes: String): String =
-        "about ${Rune.entropyBits(length, classes).roundToInt()} bits"
+    fun strength(length: Int, classes: String, symbols: String): String =
+        "about ${Rune.entropyBits(length, classes, symbols).roundToInt()} bits"
 }

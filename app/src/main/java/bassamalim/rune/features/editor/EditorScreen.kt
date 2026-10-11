@@ -33,6 +33,7 @@ import bassamalim.rune.core.ui.components.Card
 import bassamalim.rune.core.ui.components.ConfirmDialog
 import bassamalim.rune.core.ui.components.DangerButton
 import bassamalim.rune.core.ui.components.RuneTextField
+import bassamalim.rune.core.ui.components.TextAction
 import bassamalim.rune.core.ui.components.ErrorNote
 import bassamalim.rune.core.ui.components.FieldLabel
 import bassamalim.rune.core.ui.components.IconAction
@@ -43,6 +44,7 @@ import bassamalim.rune.core.ui.components.TopBar
 import bassamalim.rune.core.ui.theme.Accent
 import bassamalim.rune.core.ui.theme.AccentWash
 import bassamalim.rune.core.ui.theme.Ink
+import bassamalim.rune.core.ui.theme.RuneType
 import bassamalim.rune.core.ui.theme.InkFaint
 import bassamalim.rune.core.ui.theme.InkMuted
 import bassamalim.rune.core.ui.theme.Spacing
@@ -61,6 +63,7 @@ fun EditorScreen(viewModel: EditorViewModel = hiltViewModel()) {
         onLoginChange = viewModel::onLoginChange,
         onLengthChange = viewModel::onLengthChange,
         onClassToggle = viewModel::onClassToggle,
+        onSymbolSetChange = viewModel::onSymbolSetChange,
         onCounterChange = viewModel::onCounterChange,
         onSaveClick = viewModel::onSaveClick,
         onDeleteClick = viewModel::onDeleteClick
@@ -86,6 +89,7 @@ internal fun EditorScreen(
     onLoginChange: (String) -> Unit,
     onLengthChange: (Int) -> Unit,
     onClassToggle: (CharacterClass) -> Unit,
+    onSymbolSetChange: (String) -> Unit,
     onCounterChange: (Int) -> Unit,
     onSaveClick: () -> Unit,
     onDeleteClick: () -> Unit
@@ -161,6 +165,29 @@ internal fun EditorScreen(
                 ClassChip("!@#", "symbols", state.symbols) { onClassToggle(CharacterClass.Symbols) }
             }
             state.classesError?.let { ErrorNote(it, Modifier.padding(top = Spacing.xs)) }
+
+            if (state.symbols) {
+                RuneTextField(
+                    value = state.symbolSet,
+                    onValueChange = onSymbolSetChange,
+                    label = "Symbols this site allows",
+                    helper = "Narrow it when a site refuses some symbols.",
+                    error = state.symbolsError,
+                    textStyle = RuneType.Secret,
+                    keyboardOptions = plainText.copy(
+                        keyboardType = KeyboardType.Ascii,
+                        imeAction = ImeAction.Done
+                    ),
+                    modifier = Modifier.padding(top = Spacing.lg)
+                )
+                if (state.symbolSet != Rune.DEFAULT_SYMBOLS) {
+                    TextAction(
+                        label = "Use the usual symbols",
+                        onClick = { onSymbolSetChange(Rune.DEFAULT_SYMBOLS) },
+                        color = InkMuted
+                    )
+                }
+            }
 
             FieldLabel("Counter", Modifier.padding(top = Spacing.lg))
             Row(verticalAlignment = Alignment.CenterVertically) {

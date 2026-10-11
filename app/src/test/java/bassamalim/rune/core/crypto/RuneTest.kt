@@ -37,7 +37,7 @@ class RuneTest {
             assertEquals(text("masterKey"), master.hex())
             assertEquals(text("fingerprint"), Rune.fingerprint(master))
             assertEquals(text("siteKey"), site.hex())
-            assertEquals(text("password"), Rune.password(site, number("length"), text("classes")))
+            assertEquals(text("password"), Rune.password(site, number("length"), text("classes"), text("symbols")))
             assertEquals(text("secretKeyText"), Rune.encodeSecretKey(secret))
             assertArrayEquals(
                 secret,
@@ -49,10 +49,16 @@ class RuneTest {
     @Test
     fun `refuses a bad policy`() {
         val key = ByteArray(32)
-        assertThrows(IllegalArgumentException::class.java) { Rune.password(key, 3, "luds") }
-        assertThrows(IllegalArgumentException::class.java) { Rune.password(key, 65, "luds") }
-        assertThrows(IllegalArgumentException::class.java) { Rune.password(key, 20, "") }
-        assertThrows(IllegalArgumentException::class.java) { Rune.password(key, 20, "lx") }
+        val d = Rune.DEFAULT_SYMBOLS
+        assertThrows(IllegalArgumentException::class.java) { Rune.password(key, 3, "luds", d) }
+        assertThrows(IllegalArgumentException::class.java) { Rune.password(key, 65, "luds", d) }
+        assertThrows(IllegalArgumentException::class.java) { Rune.password(key, 20, "", d) }
+        assertThrows(IllegalArgumentException::class.java) { Rune.password(key, 20, "lx", d) }
+        assertThrows(IllegalArgumentException::class.java) { Rune.password(key, 20, "luds", "") }
+        assertThrows(IllegalArgumentException::class.java) { Rune.password(key, 20, "luds", "é") }
+        // Symbols off: the set doesn't matter.
+        assertEquals(20, Rune.password(key, 20, "lud", "").length)
+        assertEquals("!-.~", Rune.canonicalSymbols("~.-!!"))
     }
 
     @Test
@@ -66,7 +72,7 @@ class RuneTest {
 
     @Test
     fun `estimates strength`() {
-        assertEquals(125.0, Math.round(Rune.entropyBits(20, "luds")).toDouble(), 0.0)
-        assertEquals(0.0, Rune.entropyBits(20, ""), 0.0)
+        assertEquals(125.0, Math.round(Rune.entropyBits(20, "luds", Rune.DEFAULT_SYMBOLS)).toDouble(), 0.0)
+        assertEquals(0.0, Rune.entropyBits(20, "", Rune.DEFAULT_SYMBOLS), 0.0)
     }
 }

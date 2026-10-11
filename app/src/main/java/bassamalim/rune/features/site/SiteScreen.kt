@@ -34,6 +34,7 @@ import bassamalim.rune.core.ui.components.IconAction
 import bassamalim.rune.core.ui.components.Note
 import bassamalim.rune.core.ui.components.PrimaryButton
 import bassamalim.rune.core.ui.components.ScreenScaffold
+import bassamalim.rune.core.ui.components.SecondaryButton
 import bassamalim.rune.core.ui.components.TextAction
 import bassamalim.rune.core.ui.components.TopBar
 import bassamalim.rune.core.ui.components.UnlockPrompts
@@ -61,7 +62,8 @@ fun SiteScreen(viewModel: SiteViewModel = hiltViewModel()) {
         onUnlockClick = viewModel::onUnlockClick,
         onUsePasswordClick = viewModel::onUsePasswordClick,
         onRevealToggle = viewModel::onRevealToggle,
-        onCopyClick = viewModel::onCopyClick
+        onCopyClick = viewModel::onCopyClick,
+        onCopyPreviousClick = viewModel::onCopyPreviousClick
     )
 
     UnlockPrompts(
@@ -82,7 +84,8 @@ internal fun SiteScreen(
     onUnlockClick: () -> Unit,
     onUsePasswordClick: () -> Unit,
     onRevealToggle: () -> Unit,
-    onCopyClick: () -> Unit
+    onCopyClick: () -> Unit,
+    onCopyPreviousClick: () -> Unit
 ) {
     ScreenScaffold(
         topBar = {
@@ -111,7 +114,7 @@ internal fun SiteScreen(
 
             state.password == null -> Locked(onUnlockClick, onUsePasswordClick)
 
-            else -> Unlocked(state, state.password, onRevealToggle, onCopyClick)
+            else -> Unlocked(state, state.password, onRevealToggle, onCopyClick, onCopyPreviousClick)
         }
     }
 }
@@ -121,7 +124,8 @@ private fun Unlocked(
     state: SiteUiState,
     password: String,
     onRevealToggle: () -> Unit,
-    onCopyClick: () -> Unit
+    onCopyClick: () -> Unit,
+    onCopyPreviousClick: () -> Unit
 ) {
     Card {
         FieldLabel("Password")
@@ -161,9 +165,18 @@ private fun Unlocked(
             modifier = Modifier.padding(top = Spacing.md)
         )
 
+        if (state.hasPrevious) {
+            SecondaryButton(
+                label = if (state.isPreviousCopied) "Copied" else "Copy previous password",
+                icon = if (state.isPreviousCopied) R.drawable.ic_check else R.drawable.ic_copy,
+                onClick = onCopyPreviousClick,
+                modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm)
+            )
+        }
+
         Text(
             text =
-                if (state.isCopied) "The clipboard is cleared after " +
+                if (state.isCopied || state.isPreviousCopied) "The clipboard is cleared after " +
                         "${Globals.CLIPBOARD_CLEAR_MILLIS / 1000} seconds."
                 else state.details,
             style = MaterialTheme.typography.bodySmall,

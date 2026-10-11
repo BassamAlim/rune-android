@@ -10,8 +10,11 @@ data class SiteUiState(
     val details: String = "",
     /** Null until the fingerprint or master password has been given, and again after leaving. */
     val password: String? = null,
+    /** The counter has been raised, so the password before this one can be copied. */
+    val hasPrevious: Boolean = false,
     val isRevealed: Boolean = false,
     val isCopied: Boolean = false,
+    val isPreviousCopied: Boolean = false,
     val unlock: UnlockStep = UnlockStep.Idle,
     /** The settings can't produce a password (a hand-edited or imported file). */
     val problem: String? = null

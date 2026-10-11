@@ -14,6 +14,8 @@ data class Site(
     val counter: Int = 1,
     val length: Int = Rune.DEFAULT_LENGTH,
     val classes: String = Rune.ALL_CLASSES,
+    /** The symbols this site accepts; absent in files written before it existed. */
+    val symbols: String = Rune.DEFAULT_SYMBOLS,
     /** Android package names the user has linked to this site, for autofill inside apps. */
     val apps: List<String> = emptyList()
 ) {
@@ -24,14 +26,20 @@ data class Site(
 data class SiteKey(val site: String, val login: String)
 
 /**
- * This site's password. Uses [masterKey] once and zeroes it, whatever happens. Fails only when
- * the settings can't produce a password (a hand-edited or imported file).
+ * This site's password, and the one before it when the counter has been raised (a site's
+ * change-password form usually asks for the old one). Uses [masterKey] once and zeroes it,
+ * whatever happens. Fails only when the settings can't produce a password (a hand-edited or
+ * imported file).
  */
-fun Site.password(masterKey: ByteArray): Result<String> = runCatching {
-    val siteKey = Rune.siteKey(masterKey, site, login, counter)
-
-    Rune.password(siteKey, length, classes).also { siteKey.fill(0) }
+fun Site.passwords(masterKey: ByteArray): Result<Passwords> = runCatching {
+    fun at(counter: Int): String {
+        val siteKey = Rune.siteKey(masterKey, site, login, counter)
+        return Rune.password(siteKey, length, classes, symbols).also { siteKey.fill(0) }
+    }
+    Passwords(current = at(counter), previous = if (counter > 1) at(counter - 1) else null)
 }.also { masterKey.fill(0) }
+
+data class Passwords(val current: String, val previous: String?)
 
 @Serializable
 data class SiteList(

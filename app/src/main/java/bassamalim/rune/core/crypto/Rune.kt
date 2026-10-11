@@ -22,11 +22,34 @@ object Rune {
     private const val LOWER = "abcdefghijklmnopqrstuvwxyz"
     private const val UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     private const val DIGITS = "0123456789"
-    private const val SYMBOLS = "!@#$%^&*-_=+?"
+    const val DEFAULT_SYMBOLS = "!@#$%^&*-_=+?"
+
+    /**
+     * The default symbols, then the rest of ASCII punctuation: the fixed order a site's symbols
+     * take in the charset (§2.3). Keeping the defaults first keeps default passwords unchanged.
+     */
+    private const val ALL_SYMBOLS = DEFAULT_SYMBOLS + "\"'(),./:;<>[\\]`{|}~"
     private const val BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
 
-    /** In the fixed order the charset is built in, however `classes` is written. */
-    private val CLASSES = listOf('l' to LOWER, 'u' to UPPER, 'd' to DIGITS, 's' to SYMBOLS)
+    /** §2.3: a site's symbols in canonical order. Any ASCII punctuation, any order, repeats allowed. */
+    fun canonicalSymbols(symbols: String): String {
+        symbols.firstOrNull { it !in ALL_SYMBOLS }?.let {
+            throw IllegalArgumentException("'$it' is not an ASCII symbol")
+        }
+        return ALL_SYMBOLS.filter { it in symbols }
+    }
+
+    /** The enabled sets, in the fixed order the charset is built in, however `classes` is written. */
+    private fun charset(classes: String, symbols: String): List<String> {
+        require(classes.isNotEmpty() && classes.all { it in ALL_CLASSES }) {
+            "classes \"$classes\" must be a non-empty subset of \"$ALL_CLASSES\""
+        }
+        val canonical = canonicalSymbols(symbols)
+        require('s' !in classes || canonical.isNotEmpty()) { "symbols are on but none are allowed" }
+        return listOf('l' to LOWER, 'u' to UPPER, 'd' to DIGITS, 's' to canonical)
+            .filter { it.first in classes }
+            .map { it.second }
+    }
 
     private fun nfkc(text: String) = Normalizer.normalize(text, Normalizer.Form.NFKC)
 
@@ -75,14 +98,14 @@ object Rune {
         )
     }
 
-    /** §2.3: `classes` is any non-empty subset of "luds" (lower, upper, digits, symbols). */
-    fun password(siteKey: ByteArray, length: Int, classes: String): String {
+    /**
+     * §2.3: `classes` is any non-empty subset of "luds" (lower, upper, digits, symbols);
+     * `symbols` is the site's symbol set, used when `classes` has `s`.
+     */
+    fun password(siteKey: ByteArray, length: Int, classes: String, symbols: String): String {
         require(length in MIN_LENGTH..MAX_LENGTH) { "length $length not in $MIN_LENGTH..$MAX_LENGTH" }
-        require(classes.isNotEmpty() && classes.all { it in ALL_CLASSES }) {
-            "classes \"$classes\" must be a non-empty subset of \"$ALL_CLASSES\""
-        }
 
-        val enabled = CLASSES.filter { it.first in classes }.map { it.second }
+        val enabled = charset(classes, symbols)
         val charset = enabled.joinToString("")
         val limit = 256 - 256 % charset.length
 
@@ -115,8 +138,8 @@ object Rune {
             .joinToString("") { "%02x".format(it) }
 
     /** Roughly how strong a policy is, in bits (ignores the small loss from requiring every class). */
-    fun entropyBits(length: Int, classes: String): Double {
-        val size = CLASSES.filter { it.first in classes }.sumOf { it.second.length }
+    fun entropyBits(length: Int, classes: String, symbols: String): Double {
+        val size = runCatching { charset(classes, symbols) }.getOrNull()?.sumOf { it.length } ?: 0
         return if (size == 0) 0.0 else length * ln(size.toDouble()) / ln(2.0)
     }
 

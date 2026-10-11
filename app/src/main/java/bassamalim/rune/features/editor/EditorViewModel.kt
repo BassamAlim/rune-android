@@ -49,13 +49,15 @@ class EditorViewModel @Inject constructor(
                     lower = 'l' in site.classes,
                     upper = 'u' in site.classes,
                     digits = 'd' in site.classes,
-                    symbols = 's' in site.classes
+                    symbols = 's' in site.classes,
+                    symbolSet = site.symbols
                 )).copy(isLoading = false).withStrength()
             }
         }
     }
 
-    private fun EditorUiState.withStrength() = copy(strength = domain.strength(length, classes))
+    private fun EditorUiState.withStrength() =
+        copy(strength = domain.strength(length, classes, symbolSet))
 
     fun onSiteChange(text: String) = _uiState.update { it.copy(site = text, siteError = null) }
 
@@ -74,6 +76,9 @@ class EditorViewModel @Inject constructor(
         }.copy(classesError = null).withStrength()
     }
 
+    fun onSymbolSetChange(text: String) =
+        _uiState.update { it.copy(symbolSet = text, symbolsError = null).withStrength() }
+
     fun onCounterChange(delta: Int) = _uiState.update {
         it.copy(counter = (it.counter.toLong() + delta).coerceIn(1, Int.MAX_VALUE.toLong()).toInt())
     }
@@ -82,9 +87,17 @@ class EditorViewModel @Inject constructor(
         val state = _uiState.value
         val siteError = "Enter a site name.".takeIf { Rune.normalize(state.site).isEmpty() }
         val classesError = "Pick at least one kind of character.".takeIf { state.classes.isEmpty() }
+        val symbols = runCatching { Rune.canonicalSymbols(state.symbolSet) }.getOrNull()
+        val symbolsError = when {
+            symbols == null -> "Symbols can only be ASCII punctuation, like ! # - ."
+            state.symbols && symbols.isEmpty() -> "Enter the symbols this site allows, or turn symbols off."
+            else -> null
+        }
 
-        if (siteError != null || classesError != null) {
-            _uiState.update { it.copy(siteError = siteError, classesError = classesError) }
+        if (siteError != null || classesError != null || symbolsError != null) {
+            _uiState.update {
+                it.copy(siteError = siteError, classesError = classesError, symbolsError = symbolsError)
+            }
             return
         }
 
@@ -95,6 +108,7 @@ class EditorViewModel @Inject constructor(
                 counter = state.counter,
                 length = state.length,
                 classes = state.classes,
+                symbols = symbols.orEmpty(),
                 apps = apps
             )
 

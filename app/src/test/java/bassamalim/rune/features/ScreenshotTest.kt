@@ -103,7 +103,7 @@ class ScreenshotTest {
     @Test fun siteLocked() = shoot("5-site-locked") {
         SiteScreen(
             SiteUiState(isLoading = false, site = "github.com", login = "bassam"),
-            {}, {}, {}, {}, {}, {}
+            {}, {}, {}, {}, {}, {}, {}
         )
     }
 
@@ -113,11 +113,12 @@ class ScreenshotTest {
                 isLoading = false,
                 site = "github.com",
                 login = "bassam",
-                details = "20 characters  ·  counter 1  ·  about 125 bits",
+                details = "20 characters  ·  counter 2  ·  about 125 bits",
                 password = "FjKM@aRtMEp8=&cvQJDL",
+                hasPrevious = true,
                 isRevealed = true
             ),
-            {}, {}, {}, {}, {}, {}
+            {}, {}, {}, {}, {}, {}, {}
         )
     }
 
@@ -128,10 +129,10 @@ class ScreenshotTest {
                 isEditing = true,
                 site = "github.com",
                 login = "bassam",
-                symbols = false,
-                strength = "about 119 bits"
+                symbolSet = "-_.",
+                strength = "about 117 bits"
             ),
-            {}, {}, {}, {}, {}, {}, {}, {}
+            {}, {}, {}, {}, {}, {}, {}, {}, {}
         )
     }
 

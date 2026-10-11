@@ -47,8 +47,10 @@ class SiteViewModel @Inject constructor(
             login = site?.login ?: key.login,
             details = site?.let(domain::details).orEmpty(),
             password = local.password,
+            hasPrevious = local.previous != null,
             isRevealed = local.isRevealed,
             isCopied = local.isCopied,
+            isPreviousCopied = local.isPreviousCopied,
             unlock = unlock,
             problem = local.problem
         )
@@ -82,8 +84,8 @@ class SiteViewModel @Inject constructor(
     private suspend fun show(masterKey: ByteArray) {
         val site: Site = domain.observeSite(key).first() ?: return masterKey.fill(0)
 
-        domain.password(masterKey, site).fold(
-            onSuccess = { password -> localState.update { LocalState(password = password) } },
+        domain.passwords(masterKey, site).fold(
+            onSuccess = { localState.update { _ -> LocalState(password = it.current, previous = it.previous) } },
             onFailure = { e ->
                 localState.update {
                     LocalState(problem = "This site's settings are invalid: ${e.message}. Edit it to fix them.")
@@ -98,7 +100,15 @@ class SiteViewModel @Inject constructor(
         val password = localState.value.password ?: return
 
         domain.copy(password)
-        localState.update { it.copy(isCopied = true) }
+        localState.update { it.copy(isCopied = true, isPreviousCopied = false) }
+    }
+
+    /** For a site's change-password form, which usually asks for the old password too. */
+    fun onCopyPreviousClick() {
+        val previous = localState.value.previous ?: return
+
+        domain.copy(previous)
+        localState.update { it.copy(isCopied = false, isPreviousCopied = true) }
     }
 
     /** Leaving the screen, or the app, forgets the password: coming back asks again. */
@@ -113,8 +123,11 @@ class SiteViewModel @Inject constructor(
 
     private data class LocalState(
         val password: String? = null,
+        /** The password at the counter before this one, when the counter has been raised. */
+        val previous: String? = null,
         val isRevealed: Boolean = false,
         val isCopied: Boolean = false,
+        val isPreviousCopied: Boolean = false,
         val problem: String? = null
     )
 }
