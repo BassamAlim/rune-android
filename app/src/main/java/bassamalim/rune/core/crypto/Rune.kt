@@ -8,7 +8,7 @@ import javax.crypto.spec.SecretKeySpec
 import kotlin.math.ln
 
 /**
- * The `echo/v1` algorithm. SPEC.md §2 in the rune-desktop repo is the contract, and this must
+ * The `rune/v1` algorithm. SPEC.md §2 in the rune-desktop repo is the contract, and this must
  * match it byte for byte: the same `vectors.json` is asserted by both apps.
  */
 object Rune {
@@ -91,7 +91,7 @@ object Rune {
 
         return hmac(
             masterKey,
-            "echo/v1".toByteArray(Charsets.UTF_8),
+            "rune/v1".toByteArray(Charsets.UTF_8),
             u32(siteBytes.size), siteBytes,
             u32(loginBytes.size), loginBytes,
             u32(counter)
@@ -133,7 +133,7 @@ object Rune {
 
     /** §2.4: four hex digits that every device with the same key shows. */
     fun fingerprint(masterKey: ByteArray): String =
-        hmac(masterKey, "echo/v1/check".toByteArray(Charsets.UTF_8))
+        hmac(masterKey, "rune/v1/check".toByteArray(Charsets.UTF_8))
             .take(2)
             .joinToString("") { "%02x".format(it) }
 
