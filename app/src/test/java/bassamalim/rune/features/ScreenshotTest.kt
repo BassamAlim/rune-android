@@ -121,7 +121,7 @@ class ScreenshotTest {
                 isLoading = false,
                 site = "github.com",
                 login = "bassam",
-                details = "20 characters  ·  counter 2  ·  about 125 bits",
+                details = "16 characters  ·  counter 2  ·  about 100 bits",
                 password = "FjKM@aRtMEp8=&cvQJDL",
                 hasPrevious = true,
                 isRevealed = true

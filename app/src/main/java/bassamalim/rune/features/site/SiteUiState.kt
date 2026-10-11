@@ -6,7 +6,7 @@ data class SiteUiState(
     val isLoading: Boolean = true,
     val site: String = "",
     val login: String = "",
-    /** "20 characters · counter 1 · about 125 bits" */
+    /** "16 characters · counter 1 · about 100 bits" */
     val details: String = "",
     /** Null until the fingerprint or master password has been given, and again after leaving. */
     val password: String? = null,

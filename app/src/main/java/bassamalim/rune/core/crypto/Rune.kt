@@ -17,7 +17,7 @@ object Rune {
     const val PASSPHRASE_WORDS = 6
     const val MIN_LENGTH = 4
     const val MAX_LENGTH = 64
-    const val DEFAULT_LENGTH = 20
+    const val DEFAULT_LENGTH = 16
     const val ALL_CLASSES = "luds"
 
     private const val LOWER = "abcdefghijklmnopqrstuvwxyz"
