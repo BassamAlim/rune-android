@@ -67,6 +67,13 @@ object Rune {
     /** §2.2: how site and login names are canonicalised before derivation. */
     fun normalize(text: String): String = nfkc(text).trim().lowercase()
 
+    /**
+     * §2.1: NFKC, then runs of ASCII whitespace become one space and the ends are trimmed, so a
+     * stray or doubled space can't silently change every password. Case is kept.
+     */
+    private fun normalizeMaster(text: String): String =
+        nfkc(text).split(Regex("[\\t\\n\\u000B\\f\\r ]+")).filter { it.isNotEmpty() }.joinToString(" ")
+
     /** §2.1: slow on purpose (64 MiB, seconds on a phone). Run once at setup, off the main thread. */
     fun masterKey(masterPassword: String): ByteArray {
         val parameters = Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
@@ -76,7 +83,7 @@ object Rune {
             .withParallelism(4)
             .withSalt("rune/v1/master".toByteArray(Charsets.UTF_8))
             .build()
-        val password = nfkc(masterPassword).toByteArray(Charsets.UTF_8)
+        val password = normalizeMaster(masterPassword).toByteArray(Charsets.UTF_8)
         val key = ByteArray(KEY_BYTES)
 
         Argon2BytesGenerator().apply { init(parameters) }.generateBytes(password, key)
