@@ -40,6 +40,16 @@ class SetupViewModel @Inject constructor(
     fun onSecretKeyChange(text: String) =
         _uiState.update { it.copy(secretKeyText = text, secretKeyError = null) }
 
+    /** The text of a QR code scanned from the desktop app's secret key. */
+    fun onSecretKeyScanned(text: String) {
+        val key = domain.decodeSecretKey(text)
+        _uiState.update {
+            if (key == null) it.copy(secretKeyError = "That QR code isn't a Rune secret key.")
+            else it.copy(secretKeyText = domain.encodeSecretKey(key), secretKeyError = null)
+        }
+        key?.fill(0)
+    }
+
     fun onContinueClick() {
         val state = _uiState.value
         if (state.step != SetupStep.Form) return

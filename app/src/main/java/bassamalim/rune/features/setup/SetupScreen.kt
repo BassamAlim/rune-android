@@ -1,5 +1,9 @@
 package bassamalim.rune.features.setup
 
+import bassamalim.rune.core.ui.components.IconAction
+import com.journeyapps.barcodescanner.ScanOptions
+import com.journeyapps.barcodescanner.ScanContract
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -77,6 +81,11 @@ fun SetupScreen(viewModel: SetupViewModel = hiltViewModel()) {
         )
     }
 
+    // The scanner is zxing's own camera screen; nothing leaves the phone.
+    val scanner = rememberLauncherForActivityResult(ScanContract()) { result ->
+        result.contents?.let(viewModel::onSecretKeyScanned)
+    }
+
     // On the confirm step, back means "retype", not "leave with half a set-up".
     BackHandler(enabled = state.step == SetupStep.Confirm, onBack = viewModel::onBackToFormClick)
 
@@ -86,6 +95,15 @@ fun SetupScreen(viewModel: SetupViewModel = hiltViewModel()) {
         onRepeatPasswordChange = viewModel::onRepeatPasswordChange,
         onHasSecretKeyChange = viewModel::onHasSecretKeyChange,
         onSecretKeyChange = viewModel::onSecretKeyChange,
+        onScanClick = {
+            scanner.launch(
+                ScanOptions()
+                    .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                    .setPrompt("Scan the secret key from Rune's settings on your computer")
+                    .setBeepEnabled(false)
+                    .setOrientationLocked(false)
+            )
+        },
         onContinueClick = viewModel::onContinueClick,
         onWrittenDownChange = viewModel::onWrittenDownChange,
         onBackToFormClick = viewModel::onBackToFormClick,
@@ -100,6 +118,7 @@ internal fun SetupScreen(
     onRepeatPasswordChange: (String) -> Unit,
     onHasSecretKeyChange: (Boolean) -> Unit,
     onSecretKeyChange: (String) -> Unit,
+    onScanClick: () -> Unit,
     onContinueClick: () -> Unit,
     onWrittenDownChange: (Boolean) -> Unit,
     onBackToFormClick: () -> Unit,
@@ -108,7 +127,7 @@ internal fun SetupScreen(
     when (state.step) {
         SetupStep.Form -> Form(
             state, onMasterPasswordChange, onRepeatPasswordChange, onHasSecretKeyChange,
-            onSecretKeyChange, onContinueClick
+            onSecretKeyChange, onScanClick, onContinueClick
         )
 
         SetupStep.Deriving -> Deriving()
@@ -124,6 +143,7 @@ private fun Form(
     onRepeatPasswordChange: (String) -> Unit,
     onHasSecretKeyChange: (Boolean) -> Unit,
     onSecretKeyChange: (String) -> Unit,
+    onScanClick: () -> Unit,
     onContinueClick: () -> Unit
 ) {
     ScreenScaffold(topBar = {}) {
@@ -181,7 +201,7 @@ private fun Form(
                 onValueChange = onSecretKeyChange,
                 label = "Secret key",
                 placeholder = "AAAA BBBB CCCC …",
-                helper = "52 letters and digits. Spaces don't matter.",
+                helper = "52 letters and digits, or scan the code Rune shows on your computer.",
                 error = state.secretKeyError,
                 textStyle = RuneType.Secret,
                 keyboardOptions = KeyboardOptions(
@@ -190,6 +210,7 @@ private fun Form(
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(onDone = { onContinueClick() }),
+                trailing = { IconAction(R.drawable.ic_scan, "Scan the QR code", onScanClick, tint = InkMuted) },
                 modifier = Modifier.padding(top = Spacing.sm)
             )
         }

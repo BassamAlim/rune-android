@@ -63,7 +63,7 @@ class ScreenshotTest {
     )
 
     @Test fun setupForm() = shoot("1-setup") {
-        SetupScreen(SetupUiState(), {}, {}, {}, {}, {}, {}, {}, {})
+        SetupScreen(SetupUiState(), {}, {}, {}, {}, {}, {}, {}, {}, {})
     }
 
     @Test fun setupFormErrors() = shoot("1b-setup-errors") {
@@ -76,7 +76,7 @@ class ScreenshotTest {
                 repeatError = "The two passwords don't match.",
                 secretKeyError = "That isn't a valid secret key. It has 52 letters and digits."
             ),
-            {}, {}, {}, {}, {}, {}, {}, {}
+            {}, {}, {}, {}, {}, {}, {}, {}, {}
         )
     }
 
@@ -88,7 +88,7 @@ class ScreenshotTest {
                 newSecretKey = "AADQ 4FI4 EMVD COB7 IZGV IW3C NFYH O7UF RSJZ VINI V63L 3RGL 2LMQ",
                 canUseBiometrics = true
             ),
-            {}, {}, {}, {}, {}, {}, {}, {}
+            {}, {}, {}, {}, {}, {}, {}, {}, {}
         )
     }
 

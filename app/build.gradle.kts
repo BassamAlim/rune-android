@@ -109,6 +109,9 @@ dependencies {
     // Argon2id: Android has no built-in implementation.
     implementation(libs.bouncycastle)
 
+    // Scanning the secret key from the desktop app's QR code. Offline: decodes on the phone.
+    implementation(libs.zxing.android.embedded)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)

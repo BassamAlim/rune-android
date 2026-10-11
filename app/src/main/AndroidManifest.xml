@@ -19,6 +19,12 @@
         android:theme="@style/Theme.Rune"
         tools:targetApi="31">
 
+        <!-- zxing's scanner for the secret key QR code; it defaults to landscape. -->
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:screenOrientation="fullSensor"
+            tools:replace="android:screenOrientation" />
+
         <activity
             android:name=".core.Activity"
             android:exported="true"
