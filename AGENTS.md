@@ -2,8 +2,8 @@
 
 ## What Rune is
 
-A deterministic password generator for Android: one master password plus a device-held secret
-key become a different password for every site. Nothing is stored except the wrapped keys and a
+A deterministic password generator for Android: one master password becomes a different
+password for every site. Nothing is stored except the wrapped master key and a
 list of site names and settings. There is no `INTERNET` permission and there never should be.
 
 The algorithm, the site-list file format and the security model are specified in
@@ -37,7 +37,7 @@ MVVM over a single data layer. Dependencies point one way: UI → ViewModel → 
 ```
 core/
   crypto/Rune.kt           the rune/v1 algorithm: pure functions, no Android types
-  vault/                   Vault (Keystore-wrapped keys) and Unlocker (the unlock ceremony)
+  vault/                   Vault (the Keystore-wrapped master key) and Unlocker (the unlock ceremony)
   data/repositories/       SitesRepository: the only way into the site list
   models/                  Site, SiteList and the list rules (add, merge, remove)
   autofill/                the AutofillService, form parsing, site matching, AutofillActivity

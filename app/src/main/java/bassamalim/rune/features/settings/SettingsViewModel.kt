@@ -50,7 +50,6 @@ class SettingsViewModel @Inject constructor(
             isQuickUnlockOn = ready?.quickUnlock == true,
             canUseBiometrics = local.canUseBiometrics,
             isAutofillOn = local.isAutofillOn,
-            secretKey = local.secretKey,
             siteCount = sites.size,
             message = local.message,
             isMessageError = local.isMessageError,
@@ -70,17 +69,6 @@ class SettingsViewModel @Inject constructor(
     fun onResume() = localState.update {
         it.copy(canUseBiometrics = domain.canUseBiometrics(), isAutofillOn = domain.isAutofillOn())
     }
-
-    // ---- Secret key ----
-
-    /** Called once the phone has confirmed it's the owner looking. */
-    fun onSecretKeyAllowed() = viewModelScope.launch {
-        val text = domain.secretKeyText()
-
-        localState.update { it.copy(secretKey = text) }
-    }
-
-    fun onSecretKeyHide() = localState.update { it.copy(secretKey = null) }
 
     // ---- Fingerprint unlock ----
 
@@ -166,7 +154,6 @@ class SettingsViewModel @Inject constructor(
     private data class LocalState(
         val canUseBiometrics: Boolean,
         val isAutofillOn: Boolean,
-        val secretKey: String? = null,
         val message: String? = null,
         val isMessageError: Boolean = false,
         val sealing: Cipher? = null,

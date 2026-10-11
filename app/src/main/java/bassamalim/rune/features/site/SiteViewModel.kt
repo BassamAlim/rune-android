@@ -75,6 +75,8 @@ class SiteViewModel @Inject constructor(
 
     fun onUsePasswordClick() = unlocker.onUsePassword()
 
+    fun onSkipPracticeClick() = viewModelScope.launch { unlocker.skipPractice() }
+
     fun onMasterPassword(password: String) = viewModelScope.launch {
         unlocker.onPassword(password)?.let { show(it) }
     }

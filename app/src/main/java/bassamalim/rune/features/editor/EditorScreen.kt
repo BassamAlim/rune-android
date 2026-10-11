@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -34,6 +32,7 @@ import bassamalim.rune.core.ui.components.ConfirmDialog
 import bassamalim.rune.core.ui.components.DangerButton
 import bassamalim.rune.core.ui.components.RuneTextField
 import bassamalim.rune.core.ui.components.TextAction
+import bassamalim.rune.core.ui.components.ToggleChip
 import bassamalim.rune.core.ui.components.ErrorNote
 import bassamalim.rune.core.ui.components.FieldLabel
 import bassamalim.rune.core.ui.components.IconAction
@@ -42,13 +41,11 @@ import bassamalim.rune.core.ui.components.PrimaryButton
 import bassamalim.rune.core.ui.components.ScreenScaffold
 import bassamalim.rune.core.ui.components.TopBar
 import bassamalim.rune.core.ui.theme.Accent
-import bassamalim.rune.core.ui.theme.AccentWash
 import bassamalim.rune.core.ui.theme.Ink
 import bassamalim.rune.core.ui.theme.RuneType
 import bassamalim.rune.core.ui.theme.InkFaint
 import bassamalim.rune.core.ui.theme.InkMuted
 import bassamalim.rune.core.ui.theme.Spacing
-import bassamalim.rune.core.ui.theme.Surface200
 import bassamalim.rune.core.ui.theme.Surface300
 
 /** Adding a site, or changing the settings its password is made from. */
@@ -159,10 +156,10 @@ internal fun EditorScreen(
 
             FieldLabel("Characters", Modifier.padding(top = Spacing.sm))
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                ClassChip("a–z", "lowercase letters", state.lower) { onClassToggle(CharacterClass.Lower) }
-                ClassChip("A–Z", "uppercase letters", state.upper) { onClassToggle(CharacterClass.Upper) }
-                ClassChip("0–9", "digits", state.digits) { onClassToggle(CharacterClass.Digits) }
-                ClassChip("!@#", "symbols", state.symbols) { onClassToggle(CharacterClass.Symbols) }
+                ToggleChip("a–z", "lowercase letters", state.lower) { onClassToggle(CharacterClass.Lower) }
+                ToggleChip("A–Z", "uppercase letters", state.upper) { onClassToggle(CharacterClass.Upper) }
+                ToggleChip("0–9", "digits", state.digits) { onClassToggle(CharacterClass.Digits) }
+                ToggleChip("!@#", "symbols", state.symbols) { onClassToggle(CharacterClass.Symbols) }
             }
             state.classesError?.let { ErrorNote(it, Modifier.padding(top = Spacing.xs)) }
 
@@ -250,28 +247,4 @@ internal fun EditorScreen(
             )
         }
     }
-}
-
-@Composable
-private fun ClassChip(label: String, spoken: String, selected: Boolean, onClick: () -> Unit) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = { Text(label, style = MaterialTheme.typography.labelLarge) },
-        colors = FilterChipDefaults.filterChipColors(
-            containerColor = Surface200,
-            labelColor = InkMuted,
-            selectedContainerColor = AccentWash,
-            selectedLabelColor = Accent
-        ),
-        border = FilterChipDefaults.filterChipBorder(
-            enabled = true,
-            selected = selected,
-            borderColor = Surface300,
-            selectedBorderColor = Accent
-        ),
-        modifier = Modifier
-            .padding(vertical = Spacing.xs)
-            .semantics { contentDescription = spoken }
-    )
 }

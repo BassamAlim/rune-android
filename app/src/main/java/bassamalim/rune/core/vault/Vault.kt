@@ -10,6 +10,7 @@ import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import bassamalim.rune.core.crypto.Rune
 import kotlinx.coroutines.flow.Flow
@@ -32,17 +33,14 @@ sealed interface VaultState {
 }
 
 /**
- * Where the two keys live (SPEC.md §4.1).
+ * Where the master key lives (SPEC.md §4.1).
  *
- * The **master key** is sealed with a Keystore key that demands a fresh strong biometric for
- * every single use: there is no "unlocked for five minutes". The cipher is handed to
- * BiometricPrompt as a CryptoObject, so a faked success callback decrypts nothing.
- *
- * The **secret key** is sealed with a second Keystore key that needs no authentication, because
- * the master-password fallback has to be able to read it. It is useless without the password.
- *
- * Neither Keystore key can leave the device, and enrolling a new fingerprint destroys the
- * biometric one — after which only the master password gets you back in.
+ * It is sealed with a Keystore key that demands a fresh strong biometric for every single use:
+ * there is no "unlocked for five minutes". The cipher is handed to BiometricPrompt as a
+ * CryptoObject, so a faked success callback decrypts nothing. The Keystore key can't leave the
+ * device, and enrolling a new fingerprint destroys it — after which only the master password
+ * gets you back in. Alongside it: the key's fingerprint, and when the master password was last
+ * typed, for practice prompts.
  */
 @Singleton
 class Vault @Inject constructor(
@@ -53,7 +51,7 @@ class Vault @Inject constructor(
     val state: Flow<VaultState> = store.data.map { preferences ->
         val fingerprint = preferences[FINGERPRINT]
 
-        if (fingerprint == null || preferences[SECRET] == null) VaultState.NotSetUp
+        if (fingerprint == null) VaultState.NotSetUp
         else VaultState.Ready(fingerprint, quickUnlock = preferences[MASTER] != null)
     }
 
@@ -63,18 +61,13 @@ class Vault @Inject constructor(
                 BiometricManager.BIOMETRIC_SUCCESS
 
     /** First set-up, or a set-up over an old one. Leaves quick unlock off until [seal]. */
-    suspend fun create(secretKey: ByteArray, masterKey: ByteArray) {
+    suspend fun create(masterKey: ByteArray) {
         deleteKey(BIOMETRIC_ALIAS)
-        deleteKey(DEVICE_ALIAS)
-
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, generateKey(DEVICE_ALIAS, biometric = false))
-        val sealedSecret = encode(cipher.iv + cipher.doFinal(secretKey))
 
         store.edit {
             it.clear()
-            it[SECRET] = sealedSecret
             it[FINGERPRINT] = Rune.fingerprint(masterKey)
+            it[PASSWORD_TYPED_AT] = System.currentTimeMillis()
         }
     }
 
@@ -87,7 +80,7 @@ class Vault @Inject constructor(
         deleteKey(BIOMETRIC_ALIAS)
 
         return Cipher.getInstance(TRANSFORMATION).apply {
-            init(Cipher.ENCRYPT_MODE, generateKey(BIOMETRIC_ALIAS, biometric = true))
+            init(Cipher.ENCRYPT_MODE, generateKey(BIOMETRIC_ALIAS))
         }
     }
 
@@ -123,21 +116,24 @@ class Vault @Inject constructor(
         return authenticated.doFinal(sealed, IV_BYTES, sealed.size - IV_BYTES)
     }
 
-    suspend fun secretKey(): ByteArray {
-        val sealed = decode(store.data.first()[SECRET] ?: error("Rune isn't set up"))
-        val key = keyStore().getKey(DEVICE_ALIAS, null) as SecretKey
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-
-        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, sealed, 0, IV_BYTES))
-        return cipher.doFinal(sealed, IV_BYTES, sealed.size - IV_BYTES)
-    }
-
     suspend fun fingerprint(): String? = store.data.first()[FINGERPRINT]
 
-    /** Removes both keys from this phone. The site list is not the vault's and stays. */
+    /**
+     * With fingerprint unlock the master password is rarely typed, and forgetting it loses
+     * everything. So once it hasn't been typed for [PRACTICE_DAYS], the next unlock asks for it.
+     */
+    suspend fun isPracticeDue(): Boolean {
+        val typedAt = store.data.first()[PASSWORD_TYPED_AT] ?: return true
+        return System.currentTimeMillis() - typedAt > PRACTICE_DAYS * 24 * 60 * 60 * 1000L
+    }
+
+    suspend fun onPasswordTyped() {
+        store.edit { it[PASSWORD_TYPED_AT] = System.currentTimeMillis() }
+    }
+
+    /** Removes the key from this phone. The site list is not the vault's and stays. */
     suspend fun reset() {
         deleteKey(BIOMETRIC_ALIAS)
-        deleteKey(DEVICE_ALIAS)
         store.edit { it.clear() }
     }
 
@@ -153,7 +149,7 @@ class Vault @Inject constructor(
     }
 
     /** StrongBox where the phone has one, the TEE otherwise. */
-    private fun generateKey(alias: String, biometric: Boolean): SecretKey {
+    private fun generateKey(alias: String): SecretKey {
         fun generate(strongBox: Boolean): SecretKey {
             val spec = KeyGenParameterSpec.Builder(
                 alias,
@@ -163,13 +159,10 @@ class Vault @Inject constructor(
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                 .setKeySize(256)
                 .setIsStrongBoxBacked(strongBox)
-
-            if (biometric) {
-                spec.setUserAuthenticationRequired(true)
+                .setUserAuthenticationRequired(true)
                 // 0 seconds: every use needs its own authentication.
-                spec.setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
-                spec.setInvalidatedByBiometricEnrollment(true)
-            }
+                .setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
+                .setInvalidatedByBiometricEnrollment(true)
 
             return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
                 .apply { init(spec.build()) }
@@ -190,13 +183,15 @@ class Vault @Inject constructor(
         const val KEYSTORE = "AndroidKeyStore"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val BIOMETRIC_ALIAS = "rune_master"
-        const val DEVICE_ALIAS = "rune_secret"
         const val IV_BYTES = 12
         const val TAG_BITS = 128
 
-        /** Each value is Base64 of the 12-byte IV followed by the ciphertext. */
+        const val PRACTICE_DAYS = 14
+
+        /** Base64 of the 12-byte IV followed by the ciphertext. */
         val MASTER = stringPreferencesKey("master")
-        val SECRET = stringPreferencesKey("secret")
         val FINGERPRINT = stringPreferencesKey("fingerprint")
+        /** Epoch millis. */
+        val PASSWORD_TYPED_AT = longPreferencesKey("password_typed_at")
     }
 }

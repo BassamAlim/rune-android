@@ -2,7 +2,6 @@ package bassamalim.rune.features.settings
 
 import android.app.Application
 import android.view.autofill.AutofillManager
-import bassamalim.rune.core.crypto.Rune
 import bassamalim.rune.core.data.repositories.SitesRepository
 import bassamalim.rune.core.models.Site
 import bassamalim.rune.core.vault.Vault
@@ -26,11 +25,6 @@ class SettingsDomain @Inject constructor(
     fun isAutofillOn(): Boolean =
         application.getSystemService(AutofillManager::class.java)
             ?.hasEnabledAutofillServices() == true
-
-    suspend fun secretKeyText(): String? =
-        runCatching { vault.secretKey() }.getOrNull()?.let { key ->
-            Rune.encodeSecretKey(key).also { key.fill(0) }
-        }
 
     fun sealingCipher(): Cipher? = runCatching { vault.sealingCipher() }.getOrNull()
 

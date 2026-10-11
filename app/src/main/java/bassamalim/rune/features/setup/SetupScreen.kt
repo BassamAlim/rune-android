@@ -1,9 +1,5 @@
 package bassamalim.rune.features.setup
 
-import bassamalim.rune.core.ui.components.IconAction
-import com.journeyapps.barcodescanner.ScanOptions
-import com.journeyapps.barcodescanner.ScanContract
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,11 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -47,12 +39,12 @@ import bassamalim.rune.core.ui.components.PasswordField
 import bassamalim.rune.core.ui.components.PrimaryButton
 import bassamalim.rune.core.ui.components.ScreenScaffold
 import bassamalim.rune.core.ui.components.SecondaryButton
+import bassamalim.rune.core.ui.components.ToggleChip
 import bassamalim.rune.core.ui.components.promptWithCipher
 import bassamalim.rune.core.ui.theme.Accent
-import bassamalim.rune.core.ui.theme.AccentInk
+import bassamalim.rune.core.ui.theme.Danger
 import bassamalim.rune.core.ui.theme.RuneType
 import bassamalim.rune.core.ui.theme.InkMuted
-import bassamalim.rune.core.ui.theme.Sizes
 import bassamalim.rune.core.ui.theme.Spacing
 import bassamalim.rune.core.ui.theme.Surface300
 import bassamalim.rune.core.utils.findFragmentActivity
@@ -81,31 +73,16 @@ fun SetupScreen(viewModel: SetupViewModel = hiltViewModel()) {
         )
     }
 
-    // The scanner is zxing's own camera screen; nothing leaves the phone.
-    val scanner = rememberLauncherForActivityResult(ScanContract()) { result ->
-        result.contents?.let(viewModel::onSecretKeyScanned)
-    }
-
     // On the confirm step, back means "retype", not "leave with half a set-up".
     BackHandler(enabled = state.step == SetupStep.Confirm, onBack = viewModel::onBackToFormClick)
 
     SetupScreen(
         state = state,
+        onGenerateClick = viewModel::onGenerateClick,
+        onOwnClick = viewModel::onOwnClick,
         onMasterPasswordChange = viewModel::onMasterPasswordChange,
         onRepeatPasswordChange = viewModel::onRepeatPasswordChange,
-        onHasSecretKeyChange = viewModel::onHasSecretKeyChange,
-        onSecretKeyChange = viewModel::onSecretKeyChange,
-        onScanClick = {
-            scanner.launch(
-                ScanOptions()
-                    .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                    .setPrompt("Scan the secret key from Rune's settings on your computer")
-                    .setBeepEnabled(false)
-                    .setOrientationLocked(false)
-            )
-        },
         onContinueClick = viewModel::onContinueClick,
-        onWrittenDownChange = viewModel::onWrittenDownChange,
         onBackToFormClick = viewModel::onBackToFormClick,
         onSaveClick = viewModel::onSaveClick
     )
@@ -114,36 +91,33 @@ fun SetupScreen(viewModel: SetupViewModel = hiltViewModel()) {
 @Composable
 internal fun SetupScreen(
     state: SetupUiState,
+    onGenerateClick: () -> Unit,
+    onOwnClick: () -> Unit,
     onMasterPasswordChange: (String) -> Unit,
     onRepeatPasswordChange: (String) -> Unit,
-    onHasSecretKeyChange: (Boolean) -> Unit,
-    onSecretKeyChange: (String) -> Unit,
-    onScanClick: () -> Unit,
     onContinueClick: () -> Unit,
-    onWrittenDownChange: (Boolean) -> Unit,
     onBackToFormClick: () -> Unit,
     onSaveClick: () -> Unit
 ) {
     when (state.step) {
         SetupStep.Form -> Form(
-            state, onMasterPasswordChange, onRepeatPasswordChange, onHasSecretKeyChange,
-            onSecretKeyChange, onScanClick, onContinueClick
+            state, onGenerateClick, onOwnClick, onMasterPasswordChange, onRepeatPasswordChange,
+            onContinueClick
         )
 
         SetupStep.Deriving -> Deriving()
 
-        SetupStep.Confirm -> Confirm(state, onWrittenDownChange, onBackToFormClick, onSaveClick)
+        SetupStep.Confirm -> Confirm(state, onBackToFormClick, onSaveClick)
     }
 }
 
 @Composable
 private fun Form(
     state: SetupUiState,
+    onGenerateClick: () -> Unit,
+    onOwnClick: () -> Unit,
     onMasterPasswordChange: (String) -> Unit,
     onRepeatPasswordChange: (String) -> Unit,
-    onHasSecretKeyChange: (Boolean) -> Unit,
-    onSecretKeyChange: (String) -> Unit,
-    onScanClick: () -> Unit,
     onContinueClick: () -> Unit
 ) {
     ScreenScaffold(topBar = {}) {
@@ -172,46 +146,73 @@ private fun Form(
             )
         }
 
-        PasswordField(
-            value = state.masterPassword,
-            onValueChange = onMasterPasswordChange,
-            label = "Master password",
-            helper = "The one password you have to remember. Make it long.",
-            error = state.passwordError
-        )
-        PasswordField(
-            value = state.repeatPassword,
-            onValueChange = onRepeatPasswordChange,
-            label = "Repeat master password",
-            error = state.repeatError,
-            imeAction = if (state.hasSecretKey) ImeAction.Next else ImeAction.Done,
-            onDone = onContinueClick,
-            modifier = Modifier.padding(top = Spacing.lg)
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            ToggleChip("Generate one", "generate a master password", state.generated != null) {
+                if (state.generated == null) onGenerateClick()
+            }
+            ToggleChip("Use my own", "use my own master password", state.generated == null, onOwnClick)
+        }
 
-        CheckRow(
-            checked = state.hasSecretKey,
-            onCheckedChange = onHasSecretKeyChange,
-            label = "I have a secret key from another device",
-            modifier = Modifier.padding(top = Spacing.sm)
-        )
-        if (state.hasSecretKey) {
+        if (state.generated != null) {
+            Card(Modifier.padding(top = Spacing.sm)) {
+                FieldLabel("Your master password")
+                Text(state.generated, style = RuneType.Secret, color = Accent)
+                SecondaryButton(
+                    label = "New words",
+                    onClick = onGenerateClick,
+                    modifier = Modifier.padding(top = Spacing.md)
+                )
+                Text(
+                    text = "Write it down until you know it by heart. Forgetting it loses every " +
+                            "password. ${state.generatedStrength}: out of reach even if a site " +
+                            "leaks one of your passwords.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                    modifier = Modifier.padding(top = Spacing.sm)
+                )
+            }
             RuneTextField(
-                value = state.secretKeyText,
-                onValueChange = onSecretKeyChange,
-                label = "Secret key",
-                placeholder = "AAAA BBBB CCCC …",
-                helper = "52 letters and digits, or scan the code Rune shows on your computer.",
-                error = state.secretKeyError,
-                textStyle = RuneType.Secret,
+                value = state.repeatPassword,
+                onValueChange = onRepeatPasswordChange,
+                label = "Type it back",
+                error = state.repeatError,
                 keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Characters,
+                    capitalization = KeyboardCapitalization.None,
                     autoCorrectEnabled = false,
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(onDone = { onContinueClick() }),
-                trailing = { IconAction(R.drawable.ic_scan, "Scan the QR code", onScanClick, tint = InkMuted) },
+                modifier = Modifier.padding(top = Spacing.lg)
+            )
+        } else {
+            PasswordField(
+                value = state.masterPassword,
+                onValueChange = onMasterPasswordChange,
+                label = "Master password",
+                helper = "The one password you have to remember. Several unusual words work well.",
+                error = state.passwordError,
                 modifier = Modifier.padding(top = Spacing.sm)
+            )
+            state.strength?.let {
+                Text(
+                    text = it.text,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = when (it.level) {
+                        StrengthLevel.Weak -> Danger
+                        StrengthLevel.Fair -> InkMuted
+                        StrengthLevel.Strong -> Accent
+                    },
+                    modifier = Modifier.padding(top = Spacing.xs)
+                )
+            }
+            PasswordField(
+                value = state.repeatPassword,
+                onValueChange = onRepeatPasswordChange,
+                label = "Repeat master password",
+                error = state.repeatError,
+                imeAction = ImeAction.Done,
+                onDone = onContinueClick,
+                modifier = Modifier.padding(top = Spacing.lg)
             )
         }
 
@@ -249,15 +250,12 @@ private fun Deriving() {
 @Composable
 private fun Confirm(
     state: SetupUiState,
-    onWrittenDownChange: (Boolean) -> Unit,
     onBackToFormClick: () -> Unit,
     onSaveClick: () -> Unit
 ) {
-    val isNewKey = state.newSecretKey.isNotEmpty()
-
     ScreenScaffold(topBar = {}) {
         Text(
-            text = if (isNewKey) "Save your secret key" else "Check your fingerprint",
+            text = "Check your fingerprint",
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(top = Spacing.xxl, bottom = Spacing.lg).semantics { heading() }
         )
@@ -266,35 +264,12 @@ private fun Confirm(
             FieldLabel("Key fingerprint")
             Text(state.fingerprint, style = RuneType.Fingerprint, color = Accent)
             Text(
-                text =
-                    if (isNewKey) "Every device set up with the same master password and " +
-                            "secret key shows these four characters."
-                    else "This must match the fingerprint on your other device. If it " +
-                            "doesn't, go back and retype your master password.",
+                text = "Every device with the same master password shows these four " +
+                        "characters. If you use Rune on another device and its fingerprint " +
+                        "differs, go back and retype your master password.",
                 style = MaterialTheme.typography.bodySmall,
                 color = InkMuted,
                 modifier = Modifier.padding(top = Spacing.xs)
-            )
-        }
-
-        if (isNewKey) {
-            Card(Modifier.padding(top = Spacing.md)) {
-                FieldLabel("Secret key")
-                Text(state.newSecretKey, style = RuneType.Secret)
-                Text(
-                    text = "Write this down and keep it somewhere safe. A new device needs it " +
-                            "together with your master password, and it can't be recovered " +
-                            "if you lose it.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = InkMuted,
-                    modifier = Modifier.padding(top = Spacing.sm)
-                )
-            }
-            CheckRow(
-                checked = state.isWrittenDown,
-                onCheckedChange = onWrittenDownChange,
-                label = "I have written down my secret key",
-                modifier = Modifier.padding(top = Spacing.sm)
             )
         }
 
@@ -316,43 +291,9 @@ private fun Confirm(
             PrimaryButton(
                 label = "Save and continue",
                 onClick = onSaveClick,
-                enabled = state.canSave,
                 isLoading = state.isSaving,
                 modifier = Modifier.weight(1f)
             )
         }
-    }
-}
-
-/** A checkbox whose whole row is the touch target, label included. */
-@Composable
-private fun CheckRow(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .toggleable(value = checked, role = Role.Checkbox, onValueChange = onCheckedChange)
-            .padding(vertical = Spacing.md),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Checkbox(
-            checked = checked,
-            onCheckedChange = null,
-            colors = CheckboxDefaults.colors(
-                checkedColor = Accent,
-                checkmarkColor = AccentInk,
-                uncheckedColor = InkMuted
-            ),
-            modifier = Modifier.size(Sizes.icon)
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(start = Spacing.md)
-        )
     }
 }

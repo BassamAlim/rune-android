@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -22,12 +25,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import bassamalim.rune.core.ui.theme.Accent
 import bassamalim.rune.core.ui.theme.AccentInk
+import bassamalim.rune.core.ui.theme.AccentWash
 import bassamalim.rune.core.ui.theme.Danger
 import bassamalim.rune.core.ui.theme.Ink
 import bassamalim.rune.core.ui.theme.InkFaint
+import bassamalim.rune.core.ui.theme.InkMuted
 import bassamalim.rune.core.ui.theme.Sizes
 import bassamalim.rune.core.ui.theme.Spacing
 import bassamalim.rune.core.ui.theme.Surface200
@@ -148,4 +155,29 @@ fun IconAction(
             modifier = Modifier.size(Sizes.icon)
         )
     }
+}
+
+/** One of a set of on/off choices: the editor's character kinds, setup's two ways to start. */
+@Composable
+fun ToggleChip(label: String, spoken: String, selected: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label, style = MaterialTheme.typography.labelLarge) },
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = Surface200,
+            labelColor = InkMuted,
+            selectedContainerColor = AccentWash,
+            selectedLabelColor = Accent
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selected,
+            borderColor = Surface300,
+            selectedBorderColor = Accent
+        ),
+        modifier = Modifier
+            .padding(vertical = Spacing.xs)
+            .semantics { contentDescription = spoken }
+    )
 }

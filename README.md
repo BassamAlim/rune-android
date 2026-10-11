@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>A deterministic password generator for Android.</b><br />
-  One master password and a secret key become a different password for every site. No password is ever stored.
+  One master password becomes a different password for every site. No password is ever stored.
 </p>
 
 ![The site list, a site's password, the site editor and settings](docs/images/screens.png)
@@ -19,8 +19,8 @@ the same passwords. The algorithm and file formats are specified in that repo's 
 
 ## Features
 
-- **Nothing to steal.** Passwords are worked out from your master password, a secret key held
-  on the phone, and the site's name. They are never stored.
+- **Nothing to steal.** Passwords are worked out from your master password and the site's
+  name. They are never stored.
 - **No internet permission.** Nothing Rune knows can leave the phone.
 - **Fingerprint for every password.** Your master password is typed once at setup. After that
   each password asks for your fingerprint, with the master password as the fallback.
@@ -28,8 +28,8 @@ the same passwords. The algorithm and file formats are specified in that repo's 
   In a browser it only offers a password on the site it belongs to.
 - **Per-site settings.** Length, which kinds of character, and a counter you raise to get a
   new password for that site.
-- **Same passwords on your desktop.** Set both apps up with the same master password and secret
-  key; the four-character fingerprint shows they match.
+- **Same passwords on your desktop.** Set both apps up with the same master password; the
+  four-character fingerprint shows they match.
 - **Export and import.** The site list is one JSON file, shared with the desktop app.
 
 ## Commands
@@ -44,9 +44,9 @@ The screenshots land in `app/build/screenshots/`.
 
 ## Using it
 
-1. Set up with a master password. Write down the secret key it shows you.
+1. Set up with a generated master password (or your own). Learn it; Rune asks for it every two
+   weeks so you don't forget.
 2. Add a site. Opening it asks for your fingerprint and shows the password.
 3. Turn on autofill in Settings to have Rune fill login forms directly.
 
-To use the same passwords on the desktop app, set it up with the same master password and type
-in the secret key. Move the site list across with Export and Import in Settings.
+To use the same passwords on the desktop app, set it up with the same master password. Move the site list across with Export and Import in Settings.

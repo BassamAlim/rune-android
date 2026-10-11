@@ -25,94 +25,97 @@ class SetupViewModel @Inject constructor(
     val uiState: StateFlow<SetupUiState> = _uiState.asStateFlow()
 
     /** Held only between deriving and saving, then zeroed. */
-    private var secretKey: ByteArray? = null
     private var masterKey: ByteArray? = null
 
-    fun onMasterPasswordChange(text: String) =
-        _uiState.update { it.copy(masterPassword = text, passwordError = null) }
+    init {
+        onGenerateClick()
+    }
+
+    /** Back to a generated passphrase, a fresh one each time. */
+    fun onGenerateClick() = _uiState.update {
+        it.copy(
+            generated = domain.newPassphrase(),
+            generatedStrength = domain.passphraseStrength(),
+            masterPassword = "",
+            repeatPassword = "",
+            strength = null,
+            passwordError = null,
+            repeatError = null
+        )
+    }
+
+    fun onOwnClick() = _uiState.update {
+        it.copy(generated = null, repeatPassword = "", passwordError = null, repeatError = null)
+    }
+
+    fun onMasterPasswordChange(text: String) = _uiState.update {
+        it.copy(
+            masterPassword = text,
+            strength = if (text.isEmpty()) null else domain.strength(text),
+            passwordError = null
+        )
+    }
 
     fun onRepeatPasswordChange(text: String) =
         _uiState.update { it.copy(repeatPassword = text, repeatError = null) }
-
-    fun onHasSecretKeyChange(has: Boolean) =
-        _uiState.update { it.copy(hasSecretKey = has, secretKeyError = null) }
-
-    fun onSecretKeyChange(text: String) =
-        _uiState.update { it.copy(secretKeyText = text, secretKeyError = null) }
-
-    /** The text of a QR code scanned from the desktop app's secret key. */
-    fun onSecretKeyScanned(text: String) {
-        val key = domain.decodeSecretKey(text)
-        _uiState.update {
-            if (key == null) it.copy(secretKeyError = "That QR code isn't a Rune secret key.")
-            else it.copy(secretKeyText = domain.encodeSecretKey(key), secretKeyError = null)
-        }
-        key?.fill(0)
-    }
 
     fun onContinueClick() {
         val state = _uiState.value
         if (state.step != SetupStep.Form) return
 
-        val typedKey = if (state.hasSecretKey) domain.decodeSecretKey(state.secretKeyText) else null
-        val passwordError = "Enter a master password.".takeIf { state.masterPassword.isEmpty() }
-        val repeatError = "The two passwords don't match."
-            .takeIf { passwordError == null && state.masterPassword != state.repeatPassword }
-        val secretKeyError = "That isn't a valid secret key. It has 52 letters and digits."
-            .takeIf { state.hasSecretKey && typedKey == null }
+        // Typing a generated passphrase back: case and spacing don't matter.
+        fun words(text: String) = text.lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        val password = state.generated ?: state.masterPassword
+        val passwordError = "Enter a master password.".takeIf { password.isEmpty() }
+        val repeatError = when {
+            passwordError != null -> null
+            state.generated != null && words(state.generated) != words(state.repeatPassword) ->
+                "That doesn't match the words above."
+            state.generated == null && state.masterPassword != state.repeatPassword ->
+                "The two passwords don't match."
+            else -> null
+        }
 
-        if (passwordError != null || repeatError != null || secretKeyError != null) {
-            _uiState.update {
-                it.copy(
-                    passwordError = passwordError,
-                    repeatError = repeatError,
-                    secretKeyError = secretKeyError
-                )
-            }
+        if (passwordError != null || repeatError != null) {
+            _uiState.update { it.copy(passwordError = passwordError, repeatError = repeatError) }
             return
         }
 
         _uiState.update { it.copy(step = SetupStep.Deriving) }
         viewModelScope.launch {
-            val secret = typedKey ?: domain.newSecretKey()
-            val master = domain.deriveMasterKey(state.masterPassword, secret)
+            val master = domain.deriveMasterKey(password)
 
-            secretKey = secret
             masterKey = master
             _uiState.update {
                 it.copy(
                     step = SetupStep.Confirm,
                     // The password has done its job; it isn't kept anywhere from here on.
+                    generated = null,
                     masterPassword = "",
                     repeatPassword = "",
-                    secretKeyText = "",
+                    strength = null,
                     fingerprint = domain.fingerprint(master),
-                    newSecretKey = if (typedKey == null) domain.encodeSecretKey(secret) else "",
-                    isWrittenDown = false,
                     canUseBiometrics = domain.canUseBiometrics()
                 )
             }
         }
     }
 
-    fun onWrittenDownChange(checked: Boolean) =
-        _uiState.update { it.copy(isWrittenDown = checked) }
-
     fun onBackToFormClick() {
         forgetKeys()
         _uiState.update { SetupUiState(canUseBiometrics = domain.canUseBiometrics()) }
+        onGenerateClick()
     }
 
     fun onSaveClick() {
-        val secret = secretKey ?: return
         val master = masterKey ?: return
-        if (!_uiState.value.canSave) return
+        if (_uiState.value.isSaving) return
 
         _uiState.update { it.copy(isSaving = true, saveError = null) }
         viewModelScope.launch {
-            val cipher = runCatching { domain.store(secret, master) }.getOrElse {
+            val cipher = runCatching { domain.store(master) }.getOrElse {
                 _uiState.update { state ->
-                    state.copy(isSaving = false, saveError = "The keys couldn't be saved on this phone.")
+                    state.copy(isSaving = false, saveError = "The key couldn't be saved on this phone.")
                 }
                 return@launch
             }
@@ -141,9 +144,7 @@ class SetupViewModel @Inject constructor(
     }
 
     private fun forgetKeys() {
-        secretKey?.fill(0)
         masterKey?.fill(0)
-        secretKey = null
         masterKey = null
     }
 

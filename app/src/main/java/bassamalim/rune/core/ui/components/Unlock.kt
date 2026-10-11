@@ -1,7 +1,6 @@
 package bassamalim.rune.core.ui.components
 
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
-import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -45,6 +45,7 @@ fun UnlockPrompts(
     onBiometricSucceeded: (Cipher) -> Unit,
     onUsePassword: () -> Unit,
     onPassword: (String) -> Unit,
+    onSkipPractice: () -> Unit,
     onCancel: () -> Unit
 ) {
     val activity = LocalContext.current.findFragmentActivity()
@@ -72,7 +73,9 @@ fun UnlockPrompts(
             reason = reason,
             isChecking = step.isChecking,
             error = step.error,
+            isPractice = step.isPractice,
             onSubmit = onPassword,
+            onSkipPractice = onSkipPractice,
             onDismiss = onCancel
         )
     }
@@ -84,7 +87,9 @@ fun MasterPasswordSheet(
     reason: String,
     isChecking: Boolean,
     error: String?,
+    isPractice: Boolean,
     onSubmit: (String) -> Unit,
+    onSkipPractice: () -> Unit,
     onDismiss: () -> Unit
 ) {
     var password by remember { mutableStateOf("") }
@@ -105,7 +110,11 @@ fun MasterPasswordSheet(
         ) {
             Text(reason, style = MaterialTheme.typography.titleLarge)
             Text(
-                text = "Enter your master password. Checking it takes a few seconds.",
+                text =
+                    if (isPractice) "Time for a practice: with fingerprint unlock you rarely type " +
+                            "your master password, and forgetting it loses every password. Rune " +
+                            "asks for it every two weeks."
+                    else "Enter your master password. Checking it takes a few seconds.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = InkMuted,
                 modifier = Modifier.padding(top = Spacing.xs, bottom = Spacing.lg)
@@ -126,6 +135,14 @@ fun MasterPasswordSheet(
                 isLoading = isChecking,
                 modifier = Modifier.padding(top = Spacing.md)
             )
+            if (isPractice) {
+                TextAction(
+                    label = "Use fingerprint this time",
+                    onClick = onSkipPractice,
+                    color = InkMuted,
+                    modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = Spacing.xs)
+                )
+            }
         }
     }
 
@@ -166,27 +183,4 @@ fun FragmentActivity.promptWithCipher(
 
     BiometricPrompt(this, ContextCompat.getMainExecutor(this), callback)
         .authenticate(info, BiometricPrompt.CryptoObject(cipher))
-}
-
-/**
- * A plain "is it you" check with no key behind it, for showing things that are already readable
- * to the app (the secret key). Fingerprint or the phone's screen lock; a phone with neither
- * passes, since there is nothing to ask.
- */
-fun FragmentActivity.confirmPresence(title: String, onConfirmed: () -> Unit) {
-    val authenticators = BIOMETRIC_STRONG or DEVICE_CREDENTIAL
-    val available = androidx.biometric.BiometricManager.from(this)
-        .canAuthenticate(authenticators) == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
-    if (!available) return onConfirmed()
-
-    val callback = object : BiometricPrompt.AuthenticationCallback() {
-        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) =
-            onConfirmed()
-    }
-    val info = BiometricPrompt.PromptInfo.Builder()
-        .setTitle(title)
-        .setAllowedAuthenticators(authenticators)
-        .build()
-
-    BiometricPrompt(this, ContextCompat.getMainExecutor(this), callback).authenticate(info)
 }

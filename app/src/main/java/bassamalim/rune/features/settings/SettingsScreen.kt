@@ -32,7 +32,6 @@ import bassamalim.rune.core.ui.components.ScreenScaffold
 import bassamalim.rune.core.ui.components.SecondaryButton
 import bassamalim.rune.core.ui.components.TopBar
 import bassamalim.rune.core.ui.components.UnlockPrompts
-import bassamalim.rune.core.ui.components.confirmPresence
 import bassamalim.rune.core.ui.components.promptWithCipher
 import bassamalim.rune.core.ui.theme.Accent
 import bassamalim.rune.core.ui.theme.Danger
@@ -98,10 +97,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     SettingsScreen(
         state = state,
         onBackClick = viewModel::onBackClick,
-        onSecretKeyShowClick = {
-            activity?.confirmPresence("Show your secret key") { viewModel.onSecretKeyAllowed() }
-        },
-        onSecretKeyHideClick = viewModel::onSecretKeyHide,
         onQuickUnlockClick = viewModel::onQuickUnlockClick,
         onAutofillClick = {
             // Android's own "choose an autofill service" screen, with Rune offered.
@@ -123,6 +118,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         onBiometricSucceeded = {},
         onUsePassword = {},
         onPassword = { viewModel.onMasterPassword(it) },
+        onSkipPractice = {},
         onCancel = viewModel::onUnlockCancelled
     )
 
@@ -130,7 +126,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         ConfirmDialog(
             title = "Reset Rune?",
             text = "Your keys are removed from this phone. Your site list stays. To use Rune " +
-                    "here again you need your master password and your secret key.",
+                    "here again you need your master password.",
             confirmLabel = "Remove my keys",
             onConfirm = viewModel::onResetConfirm,
             onDismiss = viewModel::onResetDismiss
@@ -142,8 +138,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 internal fun SettingsScreen(
     state: SettingsUiState,
     onBackClick: () -> Unit,
-    onSecretKeyShowClick: () -> Unit,
-    onSecretKeyHideClick: () -> Unit,
     onQuickUnlockClick: () -> Unit,
     onAutofillClick: () -> Unit,
     onExportClick: () -> Unit,
@@ -185,22 +179,12 @@ internal fun SettingsScreen(
             CardTitle("Your key")
             FieldLabel("Fingerprint", Modifier.padding(top = Spacing.xs))
             Text(state.fingerprint, style = RuneType.Secret, color = Accent)
-
-            if (state.secretKey != null) {
-                FieldLabel("Secret key", Modifier.padding(top = Spacing.md))
-                Text(state.secretKey, style = RuneType.Secret)
-            }
             Text(
-                text = "A new device needs the secret key together with your master password.",
+                text = "A new device needs only your master password. Matching fingerprints show " +
+                        "it was typed the same.",
                 style = MaterialTheme.typography.bodySmall,
                 color = InkMuted,
                 modifier = Modifier.padding(top = Spacing.sm)
-            )
-            SecondaryButton(
-                label = if (state.secretKey == null) "Show secret key" else "Hide secret key",
-                icon = if (state.secretKey == null) R.drawable.ic_key else R.drawable.ic_eye_off,
-                onClick = if (state.secretKey == null) onSecretKeyShowClick else onSecretKeyHideClick,
-                modifier = Modifier.padding(top = Spacing.md)
             )
         }
 

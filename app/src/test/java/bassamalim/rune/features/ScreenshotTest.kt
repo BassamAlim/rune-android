@@ -19,6 +19,8 @@ import bassamalim.rune.features.settings.SettingsUiState
 import bassamalim.rune.features.setup.SetupScreen
 import bassamalim.rune.features.setup.SetupStep
 import bassamalim.rune.features.setup.SetupUiState
+import bassamalim.rune.features.setup.Strength
+import bassamalim.rune.features.setup.StrengthLevel
 import bassamalim.rune.features.site.SiteScreen
 import bassamalim.rune.features.site.SiteUiState
 import bassamalim.rune.features.sites.SiteRow
@@ -63,20 +65,27 @@ class ScreenshotTest {
     )
 
     @Test fun setupForm() = shoot("1-setup") {
-        SetupScreen(SetupUiState(), {}, {}, {}, {}, {}, {}, {}, {}, {})
-    }
-
-    @Test fun setupFormErrors() = shoot("1b-setup-errors") {
         SetupScreen(
             SetupUiState(
-                masterPassword = "hunter2",
-                repeatPassword = "hunter",
-                hasSecretKey = true,
-                secretKeyText = "AAAA",
-                repeatError = "The two passwords don't match.",
-                secretKeyError = "That isn't a valid secret key. It has 52 letters and digits."
+                generated = "velvet orbit candle mosaic frosty lantern",
+                generatedStrength = "78 bits"
             ),
-            {}, {}, {}, {}, {}, {}, {}, {}, {}
+            {}, {}, {}, {}, {}, {}, {}
+        )
+    }
+
+    @Test fun setupFormErrors() = shoot("1b-setup-own") {
+        SetupScreen(
+            SetupUiState(
+                masterPassword = "Bassam2024!",
+                repeatPassword = "Bassam2024",
+                strength = Strength(
+                    "If a site leaks one of your passwords, guessing this would take about 1 day.",
+                    StrengthLevel.Weak
+                ),
+                repeatError = "The two passwords don't match."
+            ),
+            {}, {}, {}, {}, {}, {}, {}
         )
     }
 
@@ -85,10 +94,9 @@ class ScreenshotTest {
             SetupUiState(
                 step = SetupStep.Confirm,
                 fingerprint = "ef15",
-                newSecretKey = "AADQ 4FI4 EMVD COB7 IZGV IW3C NFYH O7UF RSJZ VINI V63L 3RGL 2LMQ",
                 canUseBiometrics = true
             ),
-            {}, {}, {}, {}, {}, {}, {}, {}, {}
+            {}, {}, {}, {}, {}, {}, {}
         )
     }
 
@@ -147,7 +155,7 @@ class ScreenshotTest {
                 message = "Imported: 2 new, 1 updated.",
                 version = "1.0"
             ),
-            {}, {}, {}, {}, {}, {}, {}, {}
+            {}, {}, {}, {}, {}, {}
         )
     }
 

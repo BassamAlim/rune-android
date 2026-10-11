@@ -14,6 +14,7 @@ import kotlin.math.ln
 object Rune {
 
     const val KEY_BYTES = 32
+    const val PASSPHRASE_WORDS = 6
     const val MIN_LENGTH = 4
     const val MAX_LENGTH = 64
     const val DEFAULT_LENGTH = 20
@@ -29,7 +30,6 @@ object Rune {
      * take in the charset (§2.3). Keeping the defaults first keeps default passwords unchanged.
      */
     private const val ALL_SYMBOLS = DEFAULT_SYMBOLS + "\"'(),./:;<>[\\]`{|}~"
-    private const val BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
 
     /** §2.3: a site's symbols in canonical order. Any ASCII punctuation, any order, repeats allowed. */
     fun canonicalSymbols(symbols: String): String {
@@ -68,13 +68,13 @@ object Rune {
     fun normalize(text: String): String = nfkc(text).trim().lowercase()
 
     /** §2.1: slow on purpose (64 MiB, seconds on a phone). Run once at setup, off the main thread. */
-    fun masterKey(masterPassword: String, secretKey: ByteArray): ByteArray {
+    fun masterKey(masterPassword: String): ByteArray {
         val parameters = Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
             .withVersion(Argon2Parameters.ARGON2_VERSION_13)
             .withMemoryAsKB(65536)
             .withIterations(3)
             .withParallelism(4)
-            .withSalt(secretKey)
+            .withSalt("rune/v1/master".toByteArray(Charsets.UTF_8))
             .build()
         val password = nfkc(masterPassword).toByteArray(Charsets.UTF_8)
         val key = ByteArray(KEY_BYTES)
@@ -143,41 +143,19 @@ object Rune {
         return if (size == 0) 0.0 else length * ln(size.toDouble()) / ln(2.0)
     }
 
-    /** §1: the secret key as text: RFC 4648 Base32, no padding, in groups of four. */
-    fun encodeSecretKey(key: ByteArray): String {
-        val text = StringBuilder()
-        var bits = 0
-        var held = 0
-        for (byte in key) {
-            bits = (bits shl 8) or (byte.toInt() and 0xFF)
-            held += 8
-            while (held >= 5) {
-                held -= 5
-                text.append(BASE32[(bits ushr held) and 31])
-            }
-        }
-        if (held > 0) text.append(BASE32[(bits shl (5 - held)) and 31])
-        return text.chunked(4).joinToString(" ")
+    /**
+     * §1: a generated master password, [PASSPHRASE_WORDS] words from [words] (the EFF large
+     * wordlist). [random] must return uniformly random values in 0..65535 (from SecureRandom).
+     */
+    fun passphrase(words: List<String>, random: () -> Int): String {
+        val limit = 65536 - 65536 % words.size
+        return List(PASSPHRASE_WORDS) {
+            var r = random()
+            while (r >= limit) r = random()
+            words[r % words.size]
+        }.joinToString(" ")
     }
 
-    /** Accepts any case and ignores spaces, dashes and other separators. Null when it isn't a key. */
-    fun decodeSecretKey(text: String): ByteArray? {
-        val letters = text.filter { it.isLetterOrDigit() && it.code < 128 }.uppercase()
-        val bytes = ArrayList<Byte>()
-        var bits = 0
-        var held = 0
-        for (letter in letters) {
-            val value = BASE32.indexOf(letter)
-            if (value < 0) return null
-            bits = ((bits shl 5) or value) and 0xFFFF
-            held += 5
-            if (held >= 8) {
-                held -= 8
-                bytes.add((bits ushr held).toByte())
-            }
-        }
-        // Leftover bits must be zero padding, never part of a mistyped character.
-        if (held >= 5 || (bits and ((1 shl held) - 1)) != 0) return null
-        return bytes.toByteArray().takeIf { it.size == KEY_BYTES }
-    }
+    /** Strength of a generated passphrase in bits. */
+    fun passphraseBits(wordCount: Int): Double = PASSPHRASE_WORDS * ln(wordCount.toDouble()) / ln(2.0)
 }

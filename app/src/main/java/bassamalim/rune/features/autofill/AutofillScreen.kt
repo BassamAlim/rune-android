@@ -72,6 +72,7 @@ fun AutofillScreen(
         onBiometricSucceeded = { viewModel.onBiometricSucceeded(it) },
         onUsePassword = viewModel::onUsePasswordClick,
         onPassword = { viewModel.onMasterPassword(it) },
+        onSkipPractice = viewModel::onSkipPracticeClick,
         onCancel = viewModel::onUnlockCancelled
     )
 }

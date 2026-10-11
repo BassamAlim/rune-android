@@ -17,8 +17,15 @@ sealed interface UnlockStep {
     /** Show the system fingerprint prompt, bound to [cipher]. */
     data class Biometric(val cipher: Cipher) : UnlockStep
 
-    /** Ask for the master password instead: the fallback, and the only way with no fingerprint. */
-    data class Password(val isChecking: Boolean = false, val error: String? = null) : UnlockStep
+    /**
+     * Ask for the master password instead: the fallback, the only way with no fingerprint, and
+     * every two weeks as practice ([isPractice]), which can be skipped for this unlock.
+     */
+    data class Password(
+        val isChecking: Boolean = false,
+        val error: String? = null,
+        val isPractice: Boolean = false
+    ) : UnlockStep
 }
 
 /**
@@ -37,6 +44,17 @@ class Unlocker @Inject constructor(
     val step: StateFlow<UnlockStep> = _step.asStateFlow()
 
     suspend fun begin() {
+        val cipher = runCatching { vault.openingCipher() }.getOrNull()
+
+        _step.value = when {
+            cipher == null -> UnlockStep.Password()
+            vault.isPracticeDue() -> UnlockStep.Password(isPractice = true)
+            else -> UnlockStep.Biometric(cipher)
+        }
+    }
+
+    /** Fingerprint this time; the practice stays due, so the next unlock asks again. */
+    suspend fun skipPractice() {
         val cipher = runCatching { vault.openingCipher() }.getOrNull()
 
         _step.value = if (cipher != null) UnlockStep.Biometric(cipher) else UnlockStep.Password()
@@ -59,19 +77,19 @@ class Unlocker @Inject constructor(
     /** The master key, or null (and an error on [step]) when the password is wrong. */
     suspend fun onPassword(password: String): ByteArray? {
         if (password.isEmpty()) return null
-        _step.value = UnlockStep.Password(isChecking = true)
+        val isPractice = (_step.value as? UnlockStep.Password)?.isPractice == true
+        _step.value = UnlockStep.Password(isChecking = true, isPractice = isPractice)
 
-        val key = withContext(dispatcher) {
-            runCatching { Rune.masterKey(password, vault.secretKey()) }.getOrNull()
-        }
+        val key = withContext(dispatcher) { Rune.masterKey(password) }
 
-        if (key != null && Rune.fingerprint(key) == vault.fingerprint()) {
+        if (Rune.fingerprint(key) == vault.fingerprint()) {
+            vault.onPasswordTyped()
             _step.value = UnlockStep.Idle
             return key
         }
 
-        key?.fill(0)
-        _step.value = UnlockStep.Password(error = "That isn't your master password.")
+        key.fill(0)
+        _step.value = UnlockStep.Password(error = "That isn't your master password.", isPractice = isPractice)
         return null
     }
 

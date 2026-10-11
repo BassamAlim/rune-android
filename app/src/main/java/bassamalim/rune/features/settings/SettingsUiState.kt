@@ -12,8 +12,6 @@ data class SettingsUiState(
     val canUseBiometrics: Boolean = false,
     /** Rune is the phone's autofill service. */
     val isAutofillOn: Boolean = false,
-    /** The secret key as text, once the user has proved it's them. Null while hidden. */
-    val secretKey: String? = null,
     val siteCount: Int = 0,
     /** What the last export or import did, or why it didn't. */
     val message: String? = null,
