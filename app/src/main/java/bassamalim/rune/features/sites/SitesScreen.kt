@@ -31,6 +31,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import bassamalim.rune.R
 import bassamalim.rune.core.ui.components.Avatar
+import bassamalim.rune.core.ui.components.siteSubtitle
+import bassamalim.rune.core.ui.components.rememberSiteName
 import bassamalim.rune.core.ui.components.ErrorNote
 import bassamalim.rune.core.ui.components.IconAction
 import bassamalim.rune.core.ui.components.PrimaryButton
@@ -152,17 +154,19 @@ private fun SiteRowItem(row: SiteRow, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
+        val name = rememberSiteName(row.site)
+        val subtitle = siteSubtitle(name, row.site, row.login)
         Avatar(row.site)
         Column(Modifier.weight(1f)) {
             Text(
-                text = row.site,
+                text = name,
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (row.login.isNotEmpty()) {
+            if (subtitle.isNotEmpty()) {
                 Text(
-                    text = row.login,
+                    text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = InkMuted,
                     maxLines = 1,

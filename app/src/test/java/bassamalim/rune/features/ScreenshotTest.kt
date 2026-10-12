@@ -12,6 +12,8 @@ import bassamalim.rune.core.ui.theme.Surface0
 import bassamalim.rune.features.autofill.AutofillRow
 import bassamalim.rune.features.autofill.AutofillScreen
 import bassamalim.rune.features.autofill.AutofillUiState
+import bassamalim.rune.core.data.repositories.InstalledApp
+import bassamalim.rune.features.editor.AppPickerContent
 import bassamalim.rune.features.editor.EditorScreen
 import bassamalim.rune.features.editor.EditorUiState
 import bassamalim.rune.features.settings.SettingsScreen
@@ -121,6 +123,7 @@ class ScreenshotTest {
                 isLoading = false,
                 site = "github.com",
                 login = "bassam",
+                note = "username: bassam_m",
                 details = "16 characters  ·  counter 2  ·  about 100 bits",
                 password = "FjKM@aRtMEp8=&cvQJDL",
                 hasPrevious = true,
@@ -138,9 +141,25 @@ class ScreenshotTest {
                 site = "github.com",
                 login = "bassam",
                 symbolSet = "-_.",
-                strength = "about 117 bits"
+                strength = "about 117 bits",
+                apps = listOf(InstalledApp("com.github.android", "GitHub")),
+                note = "username: bassam_m"
             ),
-            {}, {}, {}, {}, {}, {}, {}, {}, {}
+            {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
+        )
+    }
+
+    @Test fun appPicker() = shoot("7b-app-picker") {
+        AppPickerContent(
+            apps = listOf(
+                InstalledApp("com.github.android", "GitHub"),
+                InstalledApp("org.mozilla.firefox", "Firefox"),
+                InstalledApp("com.google.android.apps.maps", "Maps"),
+                InstalledApp("org.thoughtcrime.securesms", "Signal")
+            ),
+            site = "github.com",
+            onPick = {},
+            onDismiss = {}
         )
     }
 

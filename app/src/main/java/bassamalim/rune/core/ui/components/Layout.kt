@@ -1,6 +1,7 @@
 package bassamalim.rune.core.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -22,10 +23,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
@@ -33,6 +39,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import bassamalim.rune.R
+import bassamalim.rune.core.data.repositories.SiteIcon
+import bassamalim.rune.core.data.repositories.SiteIcons
 import bassamalim.rune.core.ui.theme.Accent
 import bassamalim.rune.core.ui.theme.AccentWash
 import bassamalim.rune.core.ui.theme.Danger
@@ -139,24 +147,54 @@ fun CardTitle(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** The site's first letter on a tinted tile. Decoration: the name is right beside it. */
+/** Where avatars get logos. Unset (previews, screenshot tests) means letters only. */
+val LocalSiteIcons = staticCompositionLocalOf<SiteIcons?> { null }
+
+/**
+ * The site's logo, or its first letter on a tinted tile while there is none. With [app] set, that
+ * app's icon instead. Decoration: the name is right beside it.
+ */
 @Composable
-fun Avatar(name: String, modifier: Modifier = Modifier) {
+fun Avatar(name: String, modifier: Modifier = Modifier, app: String? = null) {
+    val icons = LocalSiteIcons.current
+    val logo by produceState<SiteIcon?>(null, icons, name, app) {
+        value = if (app != null) icons?.forApp(app) else icons?.forSite(name)
+    }
+    val image = remember(logo) { logo?.bitmap?.asImageBitmap() }
+
     Box(
         modifier = modifier
             .size(Sizes.avatar)
             .clip(MaterialTheme.shapes.medium)
-            .background(AccentWash)
+            .background(logo?.let { Color(it.background) } ?: AccentWash)
             .clearAndSetSemantics {},
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = name.firstOrNull()?.uppercase() ?: "?",
-            style = MaterialTheme.typography.titleMedium,
-            color = Accent
-        )
+        if (image != null) {
+            // Inset, so a logo sits on the tile instead of being cropped by its corners.
+            Image(image, contentDescription = null, modifier = Modifier.fillMaxSize().padding(Spacing.sm))
+        } else {
+            Text(
+                text = name.firstOrNull()?.uppercase() ?: "?",
+                style = MaterialTheme.typography.titleMedium,
+                color = Accent
+            )
+        }
     }
 }
+
+/** The name to show for [site]: the app's or the site's own ("GitHub"), else the stored name. */
+@Composable
+fun rememberSiteName(site: String): String {
+    val icons = LocalSiteIcons.current
+    val name by produceState(site, icons, site) { value = icons?.name(site) ?: site }
+    return name
+}
+
+/** The stored name under a nicer [name] when they differ, then the login: "github.com · bassam". */
+fun siteSubtitle(name: String, site: String, login: String): String =
+    listOfNotNull(site.takeIf { !it.equals(name, ignoreCase = true) }, login.ifEmpty { null })
+        .joinToString(" · ")
 
 /** A line with an icon in front: an error, a warning, a confirmation. Never colour alone. */
 @Composable

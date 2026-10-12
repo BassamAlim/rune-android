@@ -17,7 +17,7 @@ class AutofillDomain @Inject constructor(private val sitesRepository: SitesRepos
         val needle = Rune.normalize(query)
 
         return if (needle.isEmpty()) sites
-        else sites.filter { needle in it.site || needle in it.login }
+        else sites.filter { needle in it.site || needle in it.login || needle in it.note.lowercase() }
     }
 
     /** A name for a new site on this page, unless one is already saved under it. */

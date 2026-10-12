@@ -2,6 +2,9 @@ package bassamalim.rune.core.nav
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -19,14 +22,19 @@ import bassamalim.rune.features.sites.SitesScreen
 @Composable
 fun Navigation(navigator: Navigator, startDestination: Screen) {
     val navController = rememberNavController()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
 
-    LaunchedEffect(navController) {
-        navigator.events.collect { command ->
-            when (command) {
-                is NavCommand.To -> navController.navigate(command.destination, command.options)
-                is NavCommand.Back -> navController.popBackStack()
-                is NavCommand.BackTo ->
-                    navController.popBackStack(command.destination, command.inclusive)
+    // Only the activity on screen takes commands. Each one goes to a single collector, so a
+    // second, stopped instance of the activity collecting too would swallow every other one.
+    LaunchedEffect(navController, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            navigator.events.collect { command ->
+                when (command) {
+                    is NavCommand.To -> navController.navigate(command.destination, command.options)
+                    is NavCommand.Back -> navController.popBackStack()
+                    is NavCommand.BackTo ->
+                        navController.popBackStack(command.destination, command.inclusive)
+                }
             }
         }
     }

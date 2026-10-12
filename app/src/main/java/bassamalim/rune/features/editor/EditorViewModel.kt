@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import bassamalim.rune.core.crypto.Rune
+import bassamalim.rune.core.data.repositories.InstalledApp
 import bassamalim.rune.core.models.Site
 import bassamalim.rune.core.models.SiteKey
 import bassamalim.rune.core.nav.Navigator
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,8 +31,11 @@ class EditorViewModel @Inject constructor(
     /** The entry being edited, or null when adding. */
     private val original: SiteKey? = route.site?.let { SiteKey(it, route.login.orEmpty()) }
 
-    /** Carried through an edit untouched: the editor has no control for linked apps. */
-    private var apps: List<String> = emptyList()
+    /**
+     * Every launcher app, for labelling linked apps and for the picker. Slow (a label per app),
+     * so it loads beside the form rather than in front of it.
+     */
+    private val installed = viewModelScope.async { domain.installedApps() }
 
     private val _uiState = MutableStateFlow(EditorUiState(isEditing = original != null))
     val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
@@ -39,19 +44,26 @@ class EditorViewModel @Inject constructor(
         viewModelScope.launch {
             val site = original?.let { domain.site(it) }
 
-            apps = site?.apps.orEmpty()
             _uiState.update {
                 (if (site == null) it else it.copy(
                     site = site.site,
                     login = site.login,
+                    note = site.note,
                     counter = site.counter,
                     length = site.length,
                     lower = 'l' in site.classes,
                     upper = 'u' in site.classes,
                     digits = 'd' in site.classes,
                     symbols = 's' in site.classes,
-                    symbolSet = site.symbols
+                    symbolSet = site.symbols,
+                    // Package names until the labels arrive.
+                    apps = site.apps.map { InstalledApp(it, it) }
                 )).copy(isLoading = false).withStrength()
+            }
+
+            val all = installed.await().associateBy { it.packageName }
+            _uiState.update { state ->
+                state.copy(apps = state.apps.map { all[it.packageName] ?: it })
             }
         }
     }
@@ -62,6 +74,8 @@ class EditorViewModel @Inject constructor(
     fun onSiteChange(text: String) = _uiState.update { it.copy(site = text, siteError = null) }
 
     fun onLoginChange(text: String) = _uiState.update { it.copy(login = text, siteError = null) }
+
+    fun onNoteChange(text: String) = _uiState.update { it.copy(note = text) }
 
     fun onLengthChange(length: Int) = _uiState.update {
         it.copy(length = length.coerceIn(Rune.MIN_LENGTH, Rune.MAX_LENGTH)).withStrength()
@@ -82,6 +96,27 @@ class EditorViewModel @Inject constructor(
     fun onCounterChange(delta: Int) = _uiState.update {
         it.copy(counter = (it.counter.toLong() + delta).coerceIn(1, Int.MAX_VALUE.toLong()).toInt())
     }
+
+    fun onLinkAppClick() {
+        viewModelScope.launch {
+            val all = installed.await()
+            _uiState.update { state -> state.copy(appChoices = all.filter { it !in state.apps }) }
+        }
+    }
+
+    fun onAppPickerDismiss() = _uiState.update { it.copy(appChoices = null) }
+
+    /** For an app with no website, its name is a fine site name, so an empty one is filled in. */
+    fun onAppPick(app: InstalledApp) = _uiState.update {
+        it.copy(
+            apps = it.apps + app,
+            appChoices = null,
+            site = it.site.ifBlank { app.label.lowercase() },
+            siteError = null
+        )
+    }
+
+    fun onAppUnlink(app: InstalledApp) = _uiState.update { it.copy(apps = it.apps - app) }
 
     fun onSaveClick() {
         val state = _uiState.value
@@ -109,7 +144,8 @@ class EditorViewModel @Inject constructor(
                 length = state.length,
                 classes = state.classes,
                 symbols = symbols.orEmpty(),
-                apps = apps
+                apps = state.apps.map { it.packageName },
+                note = state.note
             )
 
             domain.save(site, replacing = original).fold(

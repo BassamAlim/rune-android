@@ -17,7 +17,12 @@ data class Site(
     /** The symbols this site accepts; absent in files written before it existed. */
     val symbols: String = Rune.DEFAULT_SYMBOLS,
     /** Android package names the user has linked to this site, for autofill inside apps. */
-    val apps: List<String> = emptyList()
+    val apps: List<String> = emptyList(),
+    /**
+     * Free text kept with the login, e.g. the username when the login is an email. Not secret,
+     * not part of the password; absent in files written before it existed.
+     */
+    val note: String = ""
 ) {
     /** What makes two entries the same account. */
     val key: SiteKey get() = SiteKey(site, login)
@@ -54,7 +59,9 @@ data class SiteList(
     fun with(site: Site, replacing: SiteKey? = null): SiteList {
         val normalised = site.copy(
             site = Rune.normalize(site.site),
-            login = Rune.normalize(site.login)
+            login = Rune.normalize(site.login),
+            // Kept as typed: a username's case can matter.
+            note = site.note.trim()
         )
         require(normalised.site.isNotEmpty()) { "Enter a site name." }
         require(normalised.classes.isNotEmpty()) { "Pick at least one kind of character." }

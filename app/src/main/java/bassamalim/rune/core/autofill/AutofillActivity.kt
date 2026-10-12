@@ -19,16 +19,20 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.core.content.IntentCompat
 import androidx.fragment.app.FragmentActivity
 import bassamalim.rune.R
+import bassamalim.rune.core.data.repositories.SiteIcons
 import bassamalim.rune.core.models.Site
+import bassamalim.rune.core.ui.components.LocalSiteIcons
 import bassamalim.rune.core.ui.theme.RuneTheme
 import bassamalim.rune.core.ui.theme.Surface0
 import bassamalim.rune.features.autofill.AutofillScreen
 import bassamalim.rune.features.autofill.FillResult
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 /**
  * Where a tapped autofill suggestion lands. It picks the site if the suggestion didn't name one,
@@ -37,6 +41,8 @@ import dagger.hilt.android.AndroidEntryPoint
  */
 @AndroidEntryPoint
 class AutofillActivity : FragmentActivity() {
+
+    @Inject lateinit var siteIcons: SiteIcons
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
@@ -59,7 +65,9 @@ class AutofillActivity : FragmentActivity() {
                         .background(Surface0)
                         .windowInsetsPadding(WindowInsets.safeDrawing)
                 ) {
-                    AutofillScreen(onResult = ::finishWith, onCancel = ::cancel)
+                    CompositionLocalProvider(LocalSiteIcons provides siteIcons) {
+                        AutofillScreen(onResult = ::finishWith, onCancel = ::cancel)
+                    }
                 }
             }
         }

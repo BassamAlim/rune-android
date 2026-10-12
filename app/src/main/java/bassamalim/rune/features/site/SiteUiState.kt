@@ -6,6 +6,8 @@ data class SiteUiState(
     val isLoading: Boolean = true,
     val site: String = "",
     val login: String = "",
+    /** Kept with the login, e.g. a username; not secret. */
+    val note: String = "",
     /** "16 characters · counter 1 · about 100 bits" */
     val details: String = "",
     /** Null until the fingerprint or master password has been given, and again after leaving. */

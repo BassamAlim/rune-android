@@ -21,7 +21,7 @@ the same passwords. The algorithm and file formats are specified in that repo's 
 
 - **Nothing to steal.** Passwords are worked out from your master password and the site's
   name. They are never stored.
-- **No internet permission.** Nothing Rune knows can leave the phone.
+- **Internet only for logos and names.** Rune asks each site for its own `/favicon.ico` and homepage, no third-party service. Passwords and keys never leave the phone, though the sites you fetch logos from (and your DNS) can see that you have an account there.
 - **Fingerprint for every password.** Your master password is typed once at setup. After that
   each password asks for your fingerprint, with the master password as the fallback.
 - **Autofill.** Rune fills login forms in apps and browsers directly, skipping the clipboard.

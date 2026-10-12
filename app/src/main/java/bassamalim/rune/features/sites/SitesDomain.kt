@@ -11,11 +11,11 @@ class SitesDomain @Inject constructor(private val sitesRepository: SitesReposito
 
     fun observeState(): StateFlow<SitesState> = sitesRepository.state
 
-    /** Matches the site name or the login, the way they are stored: trimmed and lowercase. */
+    /** Matches the site name, the login (both stored trimmed and lowercase) or the note. */
     fun filter(sites: List<Site>, query: String): List<Site> {
         val needle = Rune.normalize(query)
 
         return if (needle.isEmpty()) sites
-        else sites.filter { needle in it.site || needle in it.login }
+        else sites.filter { needle in it.site || needle in it.login || needle in it.note.lowercase() }
     }
 }

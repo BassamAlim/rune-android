@@ -2,6 +2,7 @@ package bassamalim.rune.features.site
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -27,6 +28,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import bassamalim.rune.R
 import bassamalim.rune.core.Globals
 import bassamalim.rune.core.ui.components.Avatar
+import bassamalim.rune.core.ui.components.siteSubtitle
+import bassamalim.rune.core.ui.components.rememberSiteName
 import bassamalim.rune.core.ui.components.Card
 import bassamalim.rune.core.ui.components.ErrorNote
 import bassamalim.rune.core.ui.components.FieldLabel
@@ -45,8 +48,8 @@ import bassamalim.rune.core.ui.theme.Spacing
 import bassamalim.rune.core.ui.theme.Surface0
 
 /**
- * One site's password. Opening this screen asks for the fingerprint, and so does coming back to
- * it: the password exists only while you are looking at it.
+ * One site's password, worked out on arrival from the key that unlocked the app (or asked for,
+ * when there isn't one). It exists only while you are looking at it.
  */
 @Composable
 fun SiteScreen(viewModel: SiteViewModel = hiltViewModel()) {
@@ -101,11 +104,19 @@ internal fun SiteScreen(
             modifier = Modifier.padding(bottom = Spacing.xl),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val name = rememberSiteName(state.site)
+            val subtitle = siteSubtitle(name, state.site, state.login)
             Avatar(state.site)
             Column(Modifier.padding(start = Spacing.md)) {
-                Text(state.site, style = MaterialTheme.typography.titleLarge)
-                if (state.login.isNotEmpty()) {
-                    Text(state.login, style = MaterialTheme.typography.bodyMedium, color = InkMuted)
+                Text(name, style = MaterialTheme.typography.titleLarge)
+                if (subtitle.isNotEmpty()) {
+                    Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = InkMuted)
+                }
+                if (state.note.isNotEmpty()) {
+                    // Selectable, so a username in it can be long-pressed and copied.
+                    SelectionContainer(Modifier.padding(top = Spacing.xs)) {
+                        Text(state.note, style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
             }
         }

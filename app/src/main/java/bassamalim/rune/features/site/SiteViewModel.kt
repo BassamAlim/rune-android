@@ -8,6 +8,7 @@ import bassamalim.rune.core.models.Site
 import bassamalim.rune.core.models.SiteKey
 import bassamalim.rune.core.nav.Navigator
 import bassamalim.rune.core.nav.Screen
+import bassamalim.rune.core.vault.Session
 import bassamalim.rune.core.vault.UnlockStep
 import bassamalim.rune.core.vault.Unlocker
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,6 +28,7 @@ class SiteViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val domain: SiteDomain,
     private val unlocker: Unlocker,
+    private val session: Session,
     private val navigator: Navigator
 ) : ViewModel() {
 
@@ -45,6 +47,7 @@ class SiteViewModel @Inject constructor(
             isLoading = false,
             site = site?.site ?: key.site,
             login = site?.login ?: key.login,
+            note = site?.note.orEmpty(),
             details = site?.let(domain::details).orEmpty(),
             password = local.password,
             hasPrevious = local.previous != null,
@@ -63,6 +66,8 @@ class SiteViewModel @Inject constructor(
     /** Asked for on arrival, and again by the Unlock button if the prompt was dismissed. */
     fun onUnlockClick() {
         if (localState.value.password != null) return
+        // The fingerprint that opened the app counts.
+        session.key()?.let { key -> viewModelScope.launch { show(key) }; return }
         // Already asking: a second prompt on top of the first would cancel it.
         if (unlocker.step.value != UnlockStep.Idle) return
 

@@ -4,6 +4,7 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import kotlinx.serialization.json.Json
 import org.junit.Test
 
 class SiteListTest {
@@ -18,6 +19,23 @@ class SiteListTest {
 
         assertEquals(site.copy(counter = 1).passwords(ByteArray(32) { 7 }).getOrThrow().current, now.previous)
         assertNull(site.copy(counter = 1).passwords(ByteArray(32) { 7 }).getOrThrow().previous)
+    }
+
+    @Test
+    fun `a note is kept as typed, survives older files and never touches the password`() {
+        val list = SiteList().with(Site(site = "github.com", note = "  username: Bassam_M "))
+        assertEquals("username: Bassam_M", list.sites[0].note)
+
+        val old = Json.decodeFromString<SiteList>(
+            """{"version":1,"sites":[{"site":"a","counter":1,"length":16,"classes":"l"}]}"""
+        )
+        assertEquals("", old.sites[0].note)
+
+        val key = { ByteArray(32) { 7 } }
+        assertEquals(
+            Site(site = "github.com").passwords(key()).getOrThrow(),
+            Site(site = "github.com", note = "anything").passwords(key()).getOrThrow()
+        )
     }
 
     @Test

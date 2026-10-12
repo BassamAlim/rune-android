@@ -2,7 +2,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- No INTERNET permission, on purpose: nothing Rune knows can leave the phone. -->
+    <!-- Only to fetch each site's favicon from the site itself. Passwords never leave the phone. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Lets Rune see launcher apps, to link one to a site and show its icon. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <!-- The fingerprint prompt that guards every password. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
