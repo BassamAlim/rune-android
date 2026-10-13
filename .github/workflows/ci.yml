@@ -24,8 +24,10 @@ jobs:
 
       # Same key as Tether/Hidaya/Halala, so CI APKs install over local builds. Written as .env,
       # which app/build.gradle.kts reads; printf keeps $ and backticks in passwords literal.
+      # A pull request from a fork gets no secrets: it builds with the runner's debug key instead.
       - name: Provide signing config
         run: |
+          [ -n "$KEYSTORE_BASE64" ] || exit 0
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
           {
             printf 'KEYSTORE_PATH=%s\n' "$RUNNER_TEMP/release.jks"
