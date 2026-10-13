@@ -37,12 +37,16 @@ class EditorViewModel @Inject constructor(
      */
     private val installed = viewModelScope.async { domain.installedApps() }
 
+    /** Carried through an edit untouched: only the site screen keeps or forgets it. */
+    private var sealed = ""
+
     private val _uiState = MutableStateFlow(EditorUiState(isEditing = original != null))
     val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
             val site = original?.let { domain.site(it) }
+            sealed = site?.sealed.orEmpty()
 
             _uiState.update {
                 (if (site == null) it else it.copy(
@@ -145,7 +149,8 @@ class EditorViewModel @Inject constructor(
                 classes = state.classes,
                 symbols = symbols.orEmpty(),
                 apps = state.apps.map { it.packageName },
-                note = state.note
+                note = state.note,
+                sealed = sealed
             )
 
             domain.save(site, replacing = original).fold(

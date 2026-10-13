@@ -84,6 +84,7 @@ class Unlocker @Inject constructor(
 
         if (Rune.fingerprint(key) == vault.fingerprint()) {
             vault.onPasswordTyped()
+            vault.rememberSyncKey(key)
             _step.value = UnlockStep.Idle
             return key
         }

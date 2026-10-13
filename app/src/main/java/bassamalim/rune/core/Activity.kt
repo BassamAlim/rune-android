@@ -34,6 +34,7 @@ import androidx.lifecycle.lifecycleScope
 import bassamalim.rune.R
 import bassamalim.rune.core.data.repositories.SiteIcons
 import bassamalim.rune.core.nav.Navigation
+import bassamalim.rune.core.sync.Sync
 import bassamalim.rune.core.nav.Navigator
 import bassamalim.rune.core.ui.components.LocalSiteIcons
 import bassamalim.rune.core.ui.components.PrimaryButton
@@ -56,6 +57,7 @@ class Activity : FragmentActivity() {
 
     @Inject lateinit var navigator: Navigator
     @Inject lateinit var siteIcons: SiteIcons
+    @Inject lateinit var sync: Sync
 
     private val viewModel: AppViewModel by viewModels()
 
@@ -105,6 +107,8 @@ class Activity : FragmentActivity() {
     override fun onStart() {
         super.onStart()
         lockJob?.cancel()
+        // The desktop may have changed since Rune was last in front.
+        sync.request()
     }
 
     override fun onStop() {

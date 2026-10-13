@@ -5,6 +5,9 @@
     <!-- Only to fetch each site's favicon from the site itself. Passwords never leave the phone. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Android 17+: finding and syncing with the desktop on the local network (SPEC §3.3). -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+
     <!-- Lets Rune see launcher apps, to link one to a site and show its icon. -->
     <queries>
         <intent>

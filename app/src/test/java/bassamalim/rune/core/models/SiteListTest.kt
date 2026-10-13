@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import kotlinx.serialization.json.Json
 import org.junit.Test
+import bassamalim.rune.core.crypto.Seal
 
 class SiteListTest {
 
@@ -36,6 +37,22 @@ class SiteListTest {
             Site(site = "github.com").passwords(key()).getOrThrow(),
             Site(site = "github.com", note = "anything").passwords(key()).getOrThrow()
         )
+    }
+
+    @Test
+    fun `a kept password is the current one, with Rune's to change it to`() {
+        val master = { ByteArray(32) { 7 } }
+        val plain = Site(site = "github.com")
+        val sealed = plain.copy(sealed = Seal.seal(Seal.key(master()), "Hunter2!"))
+
+        val kept = sealed.passwords(master()).getOrThrow()
+        assertEquals("Hunter2!", kept.current)
+        assertEquals(plain.passwords(master()).getOrThrow().current, kept.rune)
+        assertNull(kept.previous)
+
+        assertThrows(IllegalArgumentException::class.java) {
+            sealed.passwords(ByteArray(32) { 8 }).getOrThrow()
+        }
     }
 
     @Test
@@ -78,6 +95,39 @@ class SiteListTest {
         assertEquals(1, result.added)
         assertEquals(1, result.updated)
         assertEquals(listOf("a" to 3, "b" to 2, "c" to 1), result.list.sites.map { it.site to it.counter })
+    }
+
+    @Test
+    fun `the newer change wins but a counter never goes down, and both devices settle`() {
+        val mine = SiteList(sites = listOf(Site("a", counter = 3, note = "old", modified = 10)))
+        val theirs = SiteList(sites = listOf(Site("a", counter = 1, note = "new", modified = 20)))
+
+        val result = mine.merge(theirs)
+        assertEquals(0 to 1, result.added to result.updated)
+        assertEquals(listOf(Site("a", counter = 3, note = "new", modified = 20)), result.list.sites)
+
+        // The other device, merging the other way, lands on the same list.
+        assertEquals(result.list, theirs.merge(mine).list)
+        assertEquals(0 to 0, result.list.merge(mine).let { it.added to it.updated })
+    }
+
+    @Test
+    fun `deletes and renames travel`() {
+        val start = SiteList(sites = listOf(Site("a", modified = 10), Site("b", modified = 10)))
+        val phone = start
+            .without(SiteKey("a", ""), now = 20)
+            .with(Site("c"), replacing = SiteKey("b", ""), now = 20) // "b" renamed to "c"
+        assertEquals(listOf("c"), phone.sites.map { it.site })
+
+        val desktop = start.merge(phone).list
+        assertEquals(phone, desktop)
+
+        // Added again later, it comes back everywhere, and the delete is forgotten.
+        val again = desktop.with(Site("a"), now = 15)
+        assertEquals(21L, again.sites[0].modified) // later than the delete, whatever the clock says
+        val synced = phone.merge(again).list
+        assertEquals(again, synced)
+        assertEquals(listOf("b"), synced.deleted.map { it.site })
     }
 
     @Test

@@ -4,9 +4,12 @@
 
 A deterministic password generator for Android: one master password becomes a different
 password for every site. Nothing is stored except the wrapped master key and a
-list of site names and settings. The `INTERNET` permission exists for one thing only: fetching
-each site's `/favicon.ico` and homepage from that site, for its logo and display name (`SiteIcons`). Nothing else goes on the network, and
-no secret or derived value ever may.
+list of site names and settings, plus, until switched to Rune's, a site's old password sealed under
+the master key (SPEC §3.1; `core/crypto/Seal.kt`). The `INTERNET` permission exists for two things only: fetching
+each site's `/favicon.ico` and homepage from that site, for its logo and display name (`SiteIcons`),
+and syncing the site list with the desktop over the local network, sealed under a key both derive
+from the master key (`core/sync/Sync.kt`, SPEC §3.3). Nothing else goes on the network, and no
+password or master key ever may.
 
 The algorithm, the site-list file format and the security model are specified in
 `rune-desktop/SPEC.md` (a sibling repo, which also holds the Rust desktop app). That document is
@@ -42,7 +45,8 @@ core/
   vault/                   Vault (the Keystore-wrapped master key) and Unlocker (the unlock ceremony)
   data/repositories/       SitesRepository: the only way into the site list; SiteIcons: app icons
                            and favicons for avatars (via LocalSiteIcons, unset in screenshot tests)
-  models/                  Site, SiteList and the list rules (add, merge, remove)
+  models/                  Site, SiteList and the list rules (add, merge, remove; SPEC §3.2)
+  sync/                    Sync: finds the desktop on the local network and exchanges lists
   autofill/                the AutofillService, form parsing, site matching, AutofillActivity
   di/                      Hilt modules for things Hilt can't construct itself
   nav/                     Screen (routes), Navigator, Navigation (the graph)
@@ -72,6 +76,8 @@ Rules that matter:
   `AutofillActivity` authenticates and returns the filled one.
 - **Only browsers in `SiteMatcher.BROWSERS` are believed about a web domain.** Other apps match
   only through a site's `apps` list, which only a user's own pick can add to.
+- **Every change to the site list goes through `SiteList.with` / `without`,** which stamp it
+  (SPEC §3.2). A change that skips them loses to older copies when devices sync.
 - **A site list that can't be read stops the app** (`SitesState.Unreadable`) rather than being
   replaced with an empty one: counters can't be recomputed.
 - **Navigation goes through `Navigator`** (injected into ViewModels). Nothing outside `core/nav`
@@ -99,7 +105,8 @@ Don't hardcode hex values or `.dp` literals that aren't on the scale in `Dimens.
 
 ## What can't be tested here
 
-Keystore, BiometricPrompt and the autofill service need a real device or emulator. The unit
+Keystore, BiometricPrompt, the autofill service and a real sync (a desktop on the same Wi-Fi)
+need a real device or emulator. The unit
 tests cover the algorithm, the site-list rules, form parsing and site matching; the screenshot
 test covers layout. Anything touching `Vault`, `Unlock.kt` or `core/autofill/RuneAutofillService`
 must be tried on a phone.

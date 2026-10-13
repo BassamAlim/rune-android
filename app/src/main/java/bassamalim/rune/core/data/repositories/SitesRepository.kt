@@ -37,7 +37,10 @@ sealed interface SitesState {
     data class Unreadable(val reason: String) : SitesState
 }
 
-/** The only way into the site list. One JSON file, written atomically, never holding a password. */
+/**
+ * The only way into the site list. One JSON file, written atomically, never holding a password
+ * in the clear (a kept one is sealed, SPEC §3.1).
+ */
 @Singleton
 class SitesRepository @Inject constructor(
     @SitesFile private val file: File,
@@ -80,12 +83,9 @@ class SitesRepository @Inject constructor(
 
     /** Remembers that [packageName] is the app for this site, so autofill offers it there. */
     suspend fun linkApp(key: SiteKey, packageName: String): Result<Unit> = update { list ->
-        list.copy(
-            sites = list.sites.map {
-                if (it.key == key && packageName !in it.apps) it.copy(apps = it.apps + packageName)
-                else it
-            }
-        )
+        val site = list.sites.firstOrNull { it.key == key && packageName !in it.apps }
+
+        if (site == null) list else list.with(site.copy(apps = site.apps + packageName), replacing = key)
     }
 
     fun parse(text: String): Result<SiteList> = runCatching {
@@ -114,6 +114,8 @@ class SitesRepository @Inject constructor(
 
         runCatching {
             val changed = change(current.list)
+            // Nothing to write, and nothing new for sync to send.
+            if (changed == current.list) return@runCatching
 
             withContext(dispatcher) { write(changed) }
             _state.value = SitesState.Loaded(changed)

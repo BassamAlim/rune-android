@@ -17,7 +17,7 @@ private val Context.vaultDataStore: DataStore<Preferences> by preferencesDataSto
 
 /**
  * Everything Rune keeps lives on the device: the wrapped keys in a DataStore and the site list
- * in one JSON file. No passwords are in either.
+ * in one JSON file. No password is in either in the clear.
  *
  * Repositories aren't listed here: they're `@Singleton class ... @Inject constructor`, so Hilt
  * builds them without a module.

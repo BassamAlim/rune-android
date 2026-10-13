@@ -113,7 +113,7 @@ class ScreenshotTest {
     @Test fun siteLocked() = shoot("5-site-locked") {
         SiteScreen(
             SiteUiState(isLoading = false, site = "github.com", login = "bassam"),
-            {}, {}, {}, {}, {}, {}, {}
+            {}, {}, {}, {}, {}, {}, {}, {}, {}
         )
     }
 
@@ -129,7 +129,23 @@ class ScreenshotTest {
                 hasPrevious = true,
                 isRevealed = true
             ),
-            {}, {}, {}, {}, {}, {}, {}
+            {}, {}, {}, {}, {}, {}, {}, {}, {}
+        )
+    }
+
+    @Test fun siteKept() = shoot("6b-site-kept") {
+        SiteScreen(
+            SiteUiState(
+                isLoading = false,
+                site = "github.com",
+                login = "bassam",
+                details = "16 characters  ·  counter 1  ·  about 100 bits",
+                password = "Hunter2!",
+                hasPrevious = true,
+                isKept = true,
+                isRevealed = true
+            ),
+            {}, {}, {}, {}, {}, {}, {}, {}, {}
         )
     }
 
@@ -171,10 +187,11 @@ class ScreenshotTest {
                 isQuickUnlockOn = true,
                 canUseBiometrics = true,
                 siteCount = 6,
+                sync = "Synced with your desktop at 9:41 PM.",
                 message = "Imported: 2 new, 1 updated.",
                 version = "1.0"
             ),
-            {}, {}, {}, {}, {}, {}
+            {}, {}, {}, {}, {}, {}, {}
         )
     }
 

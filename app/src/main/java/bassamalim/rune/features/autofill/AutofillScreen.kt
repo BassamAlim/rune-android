@@ -31,7 +31,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import bassamalim.rune.R
 import bassamalim.rune.core.ui.components.Avatar
-import bassamalim.rune.core.ui.components.siteSubtitle
 import bassamalim.rune.core.ui.components.rememberSiteName
 import bassamalim.rune.core.ui.components.ErrorNote
 import bassamalim.rune.core.ui.components.PrimaryButton
@@ -182,7 +181,7 @@ private fun Picker(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
                 val name = rememberSiteName(row.site)
-                val subtitle = siteSubtitle(name, row.site, row.login)
+                val subtitle = row.login
                 Avatar(row.site)
                 Column {
                     Text(

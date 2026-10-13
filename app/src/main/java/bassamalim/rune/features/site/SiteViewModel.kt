@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import bassamalim.rune.core.crypto.Seal
 import bassamalim.rune.core.models.Site
 import bassamalim.rune.core.models.SiteKey
 import bassamalim.rune.core.nav.Navigator
@@ -51,6 +52,10 @@ class SiteViewModel @Inject constructor(
             details = site?.let(domain::details).orEmpty(),
             password = local.password,
             hasPrevious = local.previous != null,
+            isKept = local.isKept,
+            isKeeping = local.isKeeping,
+            isConfirmingSwitch = local.isConfirmingSwitch,
+            hasSealed = site?.sealed?.isNotEmpty() == true,
             isRevealed = local.isRevealed,
             isCopied = local.isCopied,
             isPreviousCopied = local.isPreviousCopied,
@@ -88,14 +93,29 @@ class SiteViewModel @Inject constructor(
 
     fun onUnlockCancelled() = unlocker.cancel()
 
+    /**
+     * Held while the password is on screen, so a kept password can be sealed without asking
+     * again. Derived from, but never, the master key; zeroed when the screen is left.
+     */
+    private var sealKey: ByteArray? = null
+
     private suspend fun show(masterKey: ByteArray) {
         val site: Site = domain.observeSite(key).first() ?: return masterKey.fill(0)
 
+        sealKey?.fill(0)
+        sealKey = Seal.key(masterKey)
         domain.passwords(masterKey, site).fold(
-            onSuccess = { localState.update { _ -> LocalState(password = it.current, previous = it.previous) } },
+            onSuccess = {
+                localState.update { _ ->
+                    LocalState(password = it.current, previous = it.rune ?: it.previous, isKept = it.rune != null)
+                }
+            },
             onFailure = { e ->
                 localState.update {
-                    LocalState(problem = "This site's settings are invalid: ${e.message}. Edit it to fix them.")
+                    LocalState(
+                        problem = if (site.sealed.isNotEmpty()) "The kept password can't be read: ${e.message}."
+                        else "This site's settings are invalid: ${e.message}. Edit it to fix them."
+                    )
                 }
             }
         )
@@ -118,9 +138,55 @@ class SiteViewModel @Inject constructor(
         localState.update { it.copy(isCopied = false, isPreviousCopied = true) }
     }
 
+    fun onKeepClick() = localState.update { it.copy(isKeeping = true) }
+
+    fun onKeepDismiss() = localState.update { it.copy(isKeeping = false) }
+
+    fun onKeepConfirm(password: String) {
+        val sealKey = sealKey ?: return
+        if (password.isEmpty()) return
+
+        viewModelScope.launch {
+            val site = domain.observeSite(key).first() ?: return@launch
+            domain.keep(site, password, sealKey).fold(
+                onSuccess = {
+                    localState.update {
+                        it.copy(password = password, previous = it.password, isKept = true, isKeeping = false)
+                    }
+                },
+                onFailure = { localState.update { it.copy(problem = "The password couldn't be saved.") } }
+            )
+        }
+    }
+
+    fun onSwitchClick() = localState.update { it.copy(isConfirmingSwitch = true) }
+
+    fun onSwitchDismiss() = localState.update { it.copy(isConfirmingSwitch = false) }
+
+    fun onSwitchConfirm() {
+        viewModelScope.launch {
+            val site = domain.observeSite(key).first() ?: return@launch
+            domain.switchToRune(site).fold(
+                onSuccess = {
+                    if (localState.value.isKept) localState.update {
+                        // Rune's password was the second one shown; it's the only one now.
+                        it.copy(password = it.previous, previous = null, isKept = false, isConfirmingSwitch = false)
+                    } else {
+                        // From the "can't be read" error: start over with Rune's password.
+                        localState.value = LocalState()
+                        onUnlockClick()
+                    }
+                },
+                onFailure = { localState.update { it.copy(problem = "The site list couldn't be saved.") } }
+            )
+        }
+    }
+
     /** Leaving the screen, or the app, forgets the password: coming back asks again. */
     fun onHidden() {
         unlocker.cancel()
+        sealKey?.fill(0)
+        sealKey = null
         localState.value = LocalState()
     }
 
@@ -135,6 +201,9 @@ class SiteViewModel @Inject constructor(
         val isRevealed: Boolean = false,
         val isCopied: Boolean = false,
         val isPreviousCopied: Boolean = false,
+        val isKept: Boolean = false,
+        val isKeeping: Boolean = false,
+        val isConfirmingSwitch: Boolean = false,
         val problem: String? = null
     )
 }

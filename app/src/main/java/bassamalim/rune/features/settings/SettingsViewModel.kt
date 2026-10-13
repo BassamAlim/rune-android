@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import bassamalim.rune.BuildConfig
 import bassamalim.rune.core.nav.Navigator
 import bassamalim.rune.core.nav.Screen
+import bassamalim.rune.core.sync.SyncStatus
 import bassamalim.rune.core.vault.Unlocker
 import bassamalim.rune.core.vault.VaultState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -40,8 +41,9 @@ class SettingsViewModel @Inject constructor(
         domain.observeVault(),
         domain.observeSites(),
         unlocker.step,
-        localState
-    ) { vault, sites, unlock, local ->
+        localState,
+        domain.observeSync()
+    ) { vault, sites, unlock, local, sync ->
         val ready = vault as? VaultState.Ready
 
         SettingsUiState(
@@ -51,6 +53,8 @@ class SettingsViewModel @Inject constructor(
             canUseBiometrics = local.canUseBiometrics,
             isAutofillOn = local.isAutofillOn,
             siteCount = sites.size,
+            sync = domain.describe(sync),
+            isSyncing = sync == SyncStatus.Syncing,
             message = local.message,
             isMessageError = local.isMessageError,
             unlock = unlock,
@@ -132,6 +136,10 @@ class SettingsViewModel @Inject constructor(
         localState.update { it.copy(message = message, isMessageError = isError) }
 
     // ---- Reset ----
+
+    fun onSyncClick() {
+        viewModelScope.launch { domain.sync() }
+    }
 
     fun onResetClick() = localState.update { it.copy(isConfirmingReset = true) }
 

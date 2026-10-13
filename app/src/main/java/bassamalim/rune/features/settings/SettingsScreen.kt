@@ -1,5 +1,6 @@
 package bassamalim.rune.features.settings
 
+import android.os.Build
 import android.content.Intent
 import androidx.core.net.toUri
 import android.provider.Settings
@@ -67,6 +68,11 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         }
     }
 
+    // Asked or already granted, the sync runs either way: refused, it reports no desktop found.
+    val networkPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { viewModel.onSyncClick() }
+
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -109,6 +115,10 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         },
         onExportClick = { exportLauncher.launch("rune-sites.json") },
         onImportClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+        onSyncClick = {
+            // Android 17 asks before an app may talk to the local network; older ones don't.
+            if (Build.VERSION.SDK_INT >= 37) networkPermission.launch(LOCAL_NETWORK) else viewModel.onSyncClick()
+        },
         onResetClick = viewModel::onResetClick
     )
 
@@ -142,6 +152,7 @@ internal fun SettingsScreen(
     onAutofillClick: () -> Unit,
     onExportClick: () -> Unit,
     onImportClick: () -> Unit,
+    onSyncClick: () -> Unit,
     onResetClick: () -> Unit
 ) {
     ScreenScaffold(topBar = { TopBar(title = "Settings", onBack = onBackClick) }) {
@@ -235,6 +246,26 @@ internal fun SettingsScreen(
         }
 
         Card(Modifier.padding(top = Spacing.md)) {
+            CardTitle("Desktop sync")
+            Text(
+                text = "Over your Wi-Fi, between devices with the same master password. Nothing " +
+                        "goes through a server. Rune syncs when you open it and after each change.",
+                style = MaterialTheme.typography.bodySmall,
+                color = InkMuted
+            )
+            Text(
+                text = state.sync,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = Spacing.md)
+            )
+            SecondaryButton(
+                label = if (state.isSyncing) "Syncing…" else "Sync now",
+                onClick = onSyncClick,
+                modifier = Modifier.padding(top = Spacing.md)
+            )
+        }
+
+        Card(Modifier.padding(top = Spacing.md)) {
             CardTitle("Site list")
             Text(
                 text = "Site names and settings, never passwords. Use the file to back up, or " +
@@ -291,3 +322,6 @@ internal fun SettingsScreen(
         )
     }
 }
+
+/** `Manifest.permission.ACCESS_LOCAL_NETWORK`, new in API 37. */
+private const val LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"

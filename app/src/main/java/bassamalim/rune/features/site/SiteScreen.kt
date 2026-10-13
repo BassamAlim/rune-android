@@ -13,6 +13,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import bassamalim.rune.core.ui.theme.Surface100
+import bassamalim.rune.core.ui.theme.Ink
+import bassamalim.rune.core.ui.components.RuneTextField
+import bassamalim.rune.core.ui.components.ConfirmDialog
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,7 +39,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import bassamalim.rune.R
 import bassamalim.rune.core.Globals
 import bassamalim.rune.core.ui.components.Avatar
-import bassamalim.rune.core.ui.components.siteSubtitle
 import bassamalim.rune.core.ui.components.rememberSiteName
 import bassamalim.rune.core.ui.components.Card
 import bassamalim.rune.core.ui.components.ErrorNote
@@ -66,8 +76,24 @@ fun SiteScreen(viewModel: SiteViewModel = hiltViewModel()) {
         onUsePasswordClick = viewModel::onUsePasswordClick,
         onRevealToggle = viewModel::onRevealToggle,
         onCopyClick = viewModel::onCopyClick,
-        onCopyPreviousClick = viewModel::onCopyPreviousClick
+        onCopyPreviousClick = viewModel::onCopyPreviousClick,
+        onKeepClick = viewModel::onKeepClick,
+        onSwitchClick = viewModel::onSwitchClick
     )
+
+    if (state.isKeeping) {
+        KeepDialog(onKeep = viewModel::onKeepConfirm, onDismiss = viewModel::onKeepDismiss)
+    }
+    if (state.isConfirmingSwitch) {
+        ConfirmDialog(
+            title = "Switch to Rune's password?",
+            text = "Do this once the site has Rune's password. Rune forgets the old one and shows " +
+                    "its own from now on.",
+            confirmLabel = "Switch",
+            onConfirm = viewModel::onSwitchConfirm,
+            onDismiss = viewModel::onSwitchDismiss
+        )
+    }
 
     UnlockPrompts(
         step = state.unlock,
@@ -89,7 +115,9 @@ internal fun SiteScreen(
     onUsePasswordClick: () -> Unit,
     onRevealToggle: () -> Unit,
     onCopyClick: () -> Unit,
-    onCopyPreviousClick: () -> Unit
+    onCopyPreviousClick: () -> Unit,
+    onKeepClick: () -> Unit,
+    onSwitchClick: () -> Unit
 ) {
     ScreenScaffold(
         topBar = {
@@ -105,7 +133,7 @@ internal fun SiteScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             val name = rememberSiteName(state.site)
-            val subtitle = siteSubtitle(name, state.site, state.login)
+            val subtitle = state.login
             Avatar(state.site)
             Column(Modifier.padding(start = Spacing.md)) {
                 Text(name, style = MaterialTheme.typography.titleLarge)
@@ -122,11 +150,20 @@ internal fun SiteScreen(
         }
 
         when {
-            state.problem != null -> ErrorNote(state.problem)
+            state.problem != null -> {
+                ErrorNote(state.problem)
+                // A kept password that can't be opened mustn't trap the site.
+                if (state.hasSealed) {
+                    TextAction(label = "Forget the kept password", onClick = onSwitchClick)
+                }
+            }
 
             state.password == null -> Locked(onUnlockClick, onUsePasswordClick)
 
-            else -> Unlocked(state, state.password, onRevealToggle, onCopyClick, onCopyPreviousClick)
+            else -> Unlocked(
+                state, state.password, onRevealToggle, onCopyClick, onCopyPreviousClick,
+                onKeepClick, onSwitchClick
+            )
         }
     }
 }
@@ -137,10 +174,12 @@ private fun Unlocked(
     password: String,
     onRevealToggle: () -> Unit,
     onCopyClick: () -> Unit,
-    onCopyPreviousClick: () -> Unit
+    onCopyPreviousClick: () -> Unit,
+    onKeepClick: () -> Unit,
+    onSwitchClick: () -> Unit
 ) {
     Card {
-        FieldLabel("Password")
+        FieldLabel(if (state.isKept) "Your old password" else "Password")
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -178,8 +217,9 @@ private fun Unlocked(
         )
 
         if (state.hasPrevious) {
+            val second = if (state.isKept) "Copy Rune's password" else "Copy previous password"
             SecondaryButton(
-                label = if (state.isPreviousCopied) "Copied" else "Copy previous password",
+                label = if (state.isPreviousCopied) "Copied" else second,
                 icon = if (state.isPreviousCopied) R.drawable.ic_check else R.drawable.ic_copy,
                 onClick = onCopyPreviousClick,
                 modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm)
@@ -194,6 +234,20 @@ private fun Unlocked(
             style = MaterialTheme.typography.bodySmall,
             color = InkMuted,
             modifier = Modifier.padding(top = Spacing.md)
+        )
+    }
+
+    if (state.isKept) {
+        Note(
+            text = "Change it on the site to Rune's password, then switch.",
+            modifier = Modifier.padding(top = Spacing.lg)
+        )
+        TextAction(label = "Switch to Rune's password", onClick = onSwitchClick)
+    } else {
+        TextAction(
+            label = "Use my old password for now",
+            onClick = onKeepClick,
+            modifier = Modifier.padding(top = Spacing.sm)
         )
     }
 
@@ -239,4 +293,44 @@ private fun Locked(onUnlockClick: () -> Unit, onUsePasswordClick: () -> Unit) {
             )
         }
     }
+}
+
+/** The site's current password, typed in to keep until it's changed to Rune's. */
+@Composable
+private fun KeepDialog(onKeep: (String) -> Unit, onDismiss: () -> Unit) {
+    // Not saveable: a password doesn't belong in saved instance state.
+    var password by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Use my old password", style = MaterialTheme.typography.titleLarge) },
+        text = {
+            Column {
+                Text(
+                    "Rune keeps it encrypted under your master password and shows it here until " +
+                            "you switch to Rune's.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                RuneTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = "Current password on this site",
+                    textStyle = RuneType.Secret,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        autoCorrectEnabled = false
+                    ),
+                    modifier = Modifier.padding(top = Spacing.lg)
+                )
+            }
+        },
+        confirmButton = {
+            TextAction(label = "Keep it", onClick = { onKeep(password) })
+        },
+        dismissButton = { TextAction(label = "Cancel", onClick = onDismiss, color = InkMuted) },
+        containerColor = Surface100,
+        titleContentColor = Ink,
+        textContentColor = InkMuted
+    )
 }

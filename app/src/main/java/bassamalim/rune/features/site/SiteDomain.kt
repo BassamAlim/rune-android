@@ -1,6 +1,7 @@
 package bassamalim.rune.features.site
 
 import bassamalim.rune.core.crypto.Rune
+import bassamalim.rune.core.crypto.Seal
 import bassamalim.rune.core.data.repositories.SitesRepository
 import bassamalim.rune.core.models.Site
 import bassamalim.rune.core.models.SiteKey
@@ -25,4 +26,12 @@ class SiteDomain @Inject constructor(
                 "${Rune.entropyBits(site.length, site.classes, site.symbols).roundToInt()} bits"
 
     fun copy(password: String) = clipboard.copy(password)
+
+    /** Keeps the site's own password, sealed, until it's changed to Rune's (SPEC §3.1). */
+    suspend fun keep(site: Site, password: String, sealKey: ByteArray): Result<Unit> =
+        sitesRepository.save(site.copy(sealed = Seal.seal(sealKey, password)), replacing = site.key)
+
+    /** The site now takes Rune's password: the kept one is forgotten. */
+    suspend fun switchToRune(site: Site): Result<Unit> =
+        sitesRepository.save(site.copy(sealed = ""), replacing = site.key)
 }

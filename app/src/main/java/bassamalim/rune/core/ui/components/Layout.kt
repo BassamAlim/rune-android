@@ -191,11 +191,6 @@ fun rememberSiteName(site: String): String {
     return name
 }
 
-/** The stored name under a nicer [name] when they differ, then the login: "github.com · bassam". */
-fun siteSubtitle(name: String, site: String, login: String): String =
-    listOfNotNull(site.takeIf { !it.equals(name, ignoreCase = true) }, login.ifEmpty { null })
-        .joinToString(" · ")
-
 /** A line with an icon in front: an error, a warning, a confirmation. Never colour alone. */
 @Composable
 fun Note(

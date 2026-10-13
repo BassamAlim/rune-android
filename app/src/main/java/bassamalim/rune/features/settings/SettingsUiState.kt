@@ -13,6 +13,9 @@ data class SettingsUiState(
     /** Rune is the phone's autofill service. */
     val isAutofillOn: Boolean = false,
     val siteCount: Int = 0,
+    /** Where syncing with the desktop stands, as a sentence. */
+    val sync: String = "",
+    val isSyncing: Boolean = false,
     /** What the last export or import did, or why it didn't. */
     val message: String? = null,
     val isMessageError: Boolean = false,

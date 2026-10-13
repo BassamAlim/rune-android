@@ -13,6 +13,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import bassamalim.rune.core.crypto.Rune
+import bassamalim.rune.core.crypto.Seal
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -68,7 +69,21 @@ class Vault @Inject constructor(
             it.clear()
             it[FINGERPRINT] = Rune.fingerprint(masterKey)
             it[PASSWORD_TYPED_AT] = System.currentTimeMillis()
+            it[SYNC] = encode(Seal.syncKey(masterKey))
         }
+    }
+
+    /**
+     * The key for syncing with the desktop (SPEC §3.3), kept so sync needs no unlock. It is a
+     * one-way derivative of the master key: it opens no password, only the site list in
+     * transit, which this phone already stores in the clear. Null until the master key has
+     * been used once on an install from before sync existed.
+     */
+    suspend fun syncKey(): ByteArray? = store.data.first()[SYNC]?.let(::decode)
+
+    /** Called wherever the master key is in hand, so older installs pick the sync key up. */
+    suspend fun rememberSyncKey(masterKey: ByteArray) {
+        if (store.data.first()[SYNC] == null) store.edit { it[SYNC] = encode(Seal.syncKey(masterKey)) }
     }
 
     /**
@@ -113,7 +128,7 @@ class Vault @Inject constructor(
     suspend fun open(authenticated: Cipher): ByteArray {
         val sealed = decode(store.data.first()[MASTER] ?: error("Nothing is sealed"))
 
-        return authenticated.doFinal(sealed, IV_BYTES, sealed.size - IV_BYTES)
+        return authenticated.doFinal(sealed, IV_BYTES, sealed.size - IV_BYTES).also { rememberSyncKey(it) }
     }
 
     suspend fun fingerprint(): String? = store.data.first()[FINGERPRINT]
@@ -191,6 +206,7 @@ class Vault @Inject constructor(
         /** Base64 of the 12-byte IV followed by the ciphertext. */
         val MASTER = stringPreferencesKey("master")
         val FINGERPRINT = stringPreferencesKey("fingerprint")
+        val SYNC = stringPreferencesKey("sync")
         /** Epoch millis. */
         val PASSWORD_TYPED_AT = longPreferencesKey("password_typed_at")
     }
