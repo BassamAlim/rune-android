@@ -52,7 +52,7 @@ object Seal {
         }
 
     /** AES-256-GCM as nonce ‖ ciphertext ‖ tag. */
-    private fun encrypt(key: ByteArray, aad: ByteArray, data: ByteArray, nonce: ByteArray): ByteArray {
+    internal fun encrypt(key: ByteArray, aad: ByteArray, data: ByteArray, nonce: ByteArray): ByteArray {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
             init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(TAG_BITS, nonce))
             updateAAD(aad)
@@ -61,7 +61,7 @@ object Seal {
     }
 
     /** Null on a wrong key or anything damaged or edited. */
-    private fun decrypt(key: ByteArray, aad: ByteArray, bytes: ByteArray): ByteArray? {
+    internal fun decrypt(key: ByteArray, aad: ByteArray, bytes: ByteArray): ByteArray? {
         if (bytes.size < NONCE_BYTES + TAG_BITS / 8) return null
 
         return runCatching {
@@ -72,5 +72,5 @@ object Seal {
         }.getOrNull()
     }
 
-    private fun randomNonce() = ByteArray(NONCE_BYTES).also(SecureRandom()::nextBytes)
+    internal fun randomNonce() = ByteArray(NONCE_BYTES).also(SecureRandom()::nextBytes)
 }

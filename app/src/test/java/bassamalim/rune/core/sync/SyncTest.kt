@@ -41,15 +41,21 @@ class SyncTest {
     @Test fun findsTheDesktopWithTheSameFingerprint() {
         DatagramSocket(0, loopback).use { desktop ->
             thread {
-                // A desktop answers only its own fingerprint, by sending the probe back.
-                repeat(2) {
+                // A desktop answers only its own fingerprint, by sending the probe back, with
+                // " ask" when a request is waiting (§3.4).
+                for (answer in listOf("", " ask", "")) {
                     val packet = DatagramPacket(ByteArray(64), 64)
                     desktop.receive(packet)
-                    if (String(packet.data, 0, packet.length) == "rune-sync/1 ef15") desktop.send(packet)
+                    val probe = String(packet.data, 0, packet.length)
+                    if (probe == "rune-sync/1 ef15") {
+                        val reply = (probe + answer).toByteArray()
+                        desktop.send(DatagramPacket(reply, reply.size, packet.socketAddress))
+                    }
                 }
             }
 
-            assertEquals(loopback, Wire.discover("ef15", setOf(loopback), desktop.localPort))
+            assertEquals(Wire.Found(loopback, asking = false), Wire.discover("ef15", setOf(loopback), desktop.localPort))
+            assertEquals(Wire.Found(loopback, asking = true), Wire.discover("ef15", setOf(loopback), desktop.localPort))
             assertNull(Wire.discover("0000", setOf(loopback), desktop.localPort))
         }
     }
@@ -65,7 +71,10 @@ class SyncTest {
                 }
             }
 
-            val answer = Wire.exchange(loopback, byteArrayOf(1, 2), desktop.localPort)
+            val answer = Wire.connect(loopback, desktop.localPort).use {
+                it.send(byteArrayOf(1, 2))
+                it.receive()
+            }
             assertArrayEquals(byteArrayOf(4, 5, 6), answer)
             assertArrayEquals(byteArrayOf(1, 2), received)
         }

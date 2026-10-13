@@ -23,7 +23,8 @@ the same passwords. The algorithm and file formats are specified in that repo's 
   name. They are never stored. Moving in from another manager, a site can keep its old password,
   encrypted under your master password, until you change it to Rune's.
 - **Syncs with your desktop over Wi-Fi.** No server and no account: the two devices find each other on your network and exchange the site list, encrypted with a key only your master password gives.
-- **Internet only for logos and names.** Rune asks each site for its own `/favicon.ico` and homepage, no third-party service. Passwords and keys never leave the phone, though the sites you fetch logos from (and your DNS) can see that you have an account there.
+- **Approves the desktop.** The desktop app never keeps your master key: when it needs a password, this phone shows what it asks for and a six-digit code to compare, and answers after your fingerprint.
+- **Internet only for logos and names.** Rune asks each site for its own `/favicon.ico` and homepage, no third-party service. Passwords and keys never leave the phone except to your desktop, after you approve it, though the sites you fetch logos from (and your DNS) can see that you have an account there.
 - **Fingerprint for every password.** Your master password is typed once at setup. After that
   each password asks for your fingerprint, with the master password as the fallback.
 - **Autofill.** Rune fills login forms in apps and browsers directly, skipping the clipboard.

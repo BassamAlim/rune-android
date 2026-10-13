@@ -34,8 +34,10 @@ import androidx.lifecycle.lifecycleScope
 import bassamalim.rune.R
 import bassamalim.rune.core.data.repositories.SiteIcons
 import bassamalim.rune.core.nav.Navigation
+import bassamalim.rune.core.sync.Approvals
 import bassamalim.rune.core.sync.Sync
 import bassamalim.rune.core.nav.Navigator
+import bassamalim.rune.core.ui.components.ApprovalSheet
 import bassamalim.rune.core.ui.components.LocalSiteIcons
 import bassamalim.rune.core.ui.components.PrimaryButton
 import bassamalim.rune.core.ui.components.TextAction
@@ -58,6 +60,7 @@ class Activity : FragmentActivity() {
     @Inject lateinit var navigator: Navigator
     @Inject lateinit var siteIcons: SiteIcons
     @Inject lateinit var sync: Sync
+    @Inject lateinit var approvals: Approvals
 
     private val viewModel: AppViewModel by viewModels()
 
@@ -97,6 +100,20 @@ class Activity : FragmentActivity() {
                             else -> Navigation(navigator = navigator, startDestination = start)
                         }
                     }
+
+                    val approval by approvals.state.collectAsStateWithLifecycle()
+                    val approvalUnlock by approvals.unlock.collectAsStateWithLifecycle()
+                    ApprovalSheet(
+                        state = approval,
+                        unlock = approvalUnlock,
+                        onApprove = approvals::onApprove,
+                        onDecline = approvals::onDecline,
+                        onBiometricSucceeded = { approvals.onBiometricSucceeded(it) },
+                        onUsePassword = approvals::onUsePassword,
+                        onPassword = { approvals.onPassword(it) },
+                        onSkipPractice = { approvals.onSkipPractice() },
+                        onUnlockCancelled = approvals::onUnlockCancelled
+                    )
                 }
             }
         }
@@ -109,10 +126,12 @@ class Activity : FragmentActivity() {
         lockJob?.cancel()
         // The desktop may have changed since Rune was last in front.
         sync.request()
+        sync.watch()
     }
 
     override fun onStop() {
         super.onStop()
+        sync.stopWatching()
         // A rotation stops the activity too, but nobody left.
         if (isChangingConfigurations) return
         lockJob = lifecycleScope.launch {

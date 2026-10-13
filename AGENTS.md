@@ -8,8 +8,11 @@ list of site names and settings, plus, until switched to Rune's, a site's old pa
 the master key (SPEC §3.1; `core/crypto/Seal.kt`). The `INTERNET` permission exists for two things only: fetching
 each site's `/favicon.ico` and homepage from that site, for its logo and display name (`SiteIcons`),
 and syncing the site list with the desktop over the local network, sealed under a key both derive
-from the master key (`core/sync/Sync.kt`, SPEC §3.3). Nothing else goes on the network, and no
-password or master key ever may.
+from the master key (`core/sync/Sync.kt`, SPEC §3.3). The desktop never keeps the master key, so
+it asks this phone for a password (or to seal one) on the same connection; the phone shows what
+is asked and a code to compare, and answers only after its own unlock, sealed under a one-time
+key the two agree (`core/sync/Approvals.kt`, SPEC §3.4). Nothing else goes on the network: no
+password except an approved answer to the desktop, and never the master key.
 
 The algorithm, the site-list file format and the security model are specified in
 `rune-desktop/SPEC.md` (a sibling repo, which also holds the Rust desktop app). That document is
@@ -22,7 +25,7 @@ the contract; this app and the desktop app must produce identical passwords.
 - Hilt for DI, KSP for annotation processing (never KAPT)
 - DataStore Preferences for the wrapped keys; one JSON file for the site list
 - Navigation Compose with **type-safe routes** (`@Serializable` destinations in `core/nav/Screen.kt`)
-- AndroidX Biometric with a Keystore-bound `CryptoObject`; Bouncy Castle for Argon2id only
+- AndroidX Biometric with a Keystore-bound `CryptoObject`; Bouncy Castle for Argon2id and X25519 only
 - Version catalog: `gradle/libs.versions.toml`. Add dependencies there, never inline.
 
 ## Commands
@@ -46,7 +49,8 @@ core/
   data/repositories/       SitesRepository: the only way into the site list; SiteIcons: app icons
                            and favicons for avatars (via LocalSiteIcons, unset in screenshot tests)
   models/                  Site, SiteList and the list rules (add, merge, remove; SPEC §3.2)
-  sync/                    Sync: finds the desktop on the local network and exchanges lists
+  sync/                    Sync: finds the desktop on the local network and exchanges lists;
+                           Approvals: answers what the desktop asks for, behind ApprovalSheet
   autofill/                the AutofillService, form parsing, site matching, AutofillActivity
   di/                      Hilt modules for things Hilt can't construct itself
   nav/                     Screen (routes), Navigator, Navigation (the graph)

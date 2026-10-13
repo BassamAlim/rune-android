@@ -1,5 +1,6 @@
 package bassamalim.rune.core.sync
 
+import bassamalim.rune.core.crypto.Approval
 import bassamalim.rune.core.crypto.Seal
 import bassamalim.rune.core.data.repositories.SitesRepository
 import bassamalim.rune.core.data.repositories.SitesState
@@ -8,6 +9,7 @@ import bassamalim.rune.core.di.IoDispatcher
 import bassamalim.rune.core.vault.Vault
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +20,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.Closeable
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
@@ -54,6 +57,7 @@ sealed interface SyncStatus {
 class Sync @Inject constructor(
     private val vault: Vault,
     private val sitesRepository: SitesRepository,
+    private val approvals: Approvals,
     @IoDispatcher private val dispatcher: CoroutineDispatcher,
     @ApplicationScope private val scope: CoroutineScope
 ) {
@@ -79,36 +83,87 @@ class Sync @Inject constructor(
         scope.launch { sync() }
     }
 
-    suspend fun sync(): SyncStatus = running.withLock {
-        _status.value = SyncStatus.Syncing
-        attempt().also { _status.value = it }
+    suspend fun sync(): SyncStatus {
+        var handOver: (() -> Unit)? = null
+        val status = running.withLock {
+            _status.value = SyncStatus.Syncing
+            attempt { handOver = it }.also { _status.value = it }
+        }
+        // Outside the lock: answering takes as long as the user does, and may sync again.
+        handOver?.invoke()
+        return status
     }
 
-    private suspend fun attempt(): SyncStatus {
+    private var watching: Job? = null
+
+    /**
+     * While the app is in front, asks every [WATCH_MILLIS] whether the desktop is waiting on an
+     * approval (SPEC §3.4) and syncs to take it when it is.
+     */
+    fun watch() {
+        watching?.cancel()
+        watching = scope.launch {
+            while (true) {
+                delay(WATCH_MILLIS)
+                if (approvals.isBusy || running.isLocked) continue
+                val fingerprint = vault.fingerprint() ?: continue
+                val found = withContext(dispatcher) { runCatching { Wire.discover(fingerprint) }.getOrNull() }
+                if (found?.asking == true) sync()
+            }
+        }
+    }
+
+    fun stopWatching() {
+        watching?.cancel()
+        watching = null
+    }
+
+    private suspend fun attempt(handOver: (() -> Unit) -> Unit): SyncStatus {
         val key = vault.syncKey() ?: return SyncStatus.NotReady
         val fingerprint = vault.fingerprint() ?: return SyncStatus.NotReady
         val mine = sitesRepository.export() ?: return SyncStatus.Failed("The site list can't be read.")
 
-        val reply = try {
-            withContext(dispatcher) {
-                val desktop = Wire.discover(fingerprint) ?: return@withContext null
-                Wire.exchange(desktop, Seal.sealMessage(key, mine))
+        var connection: Wire.Connection? = null
+        try {
+            val reply = try {
+                withContext(dispatcher) {
+                    val desktop = Wire.discover(fingerprint) ?: return@withContext null
+                    Wire.connect(desktop.address).also { connection = it }.run {
+                        send(Seal.sealMessage(key, mine))
+                        receive()
+                    }
+                }
+            } catch (e: IOException) {
+                return SyncStatus.Failed("The desktop stopped answering.")
+            } ?: return SyncStatus.NoDesktop
+
+            val theirs = Seal.openMessage(key, reply)?.let { sitesRepository.parse(it).getOrNull() }
+                ?: return SyncStatus.Failed("The desktop's answer couldn't be read.")
+
+            val status = sitesRepository.merge(theirs).fold(
+                onSuccess = { SyncStatus.Synced(System.currentTimeMillis()) },
+                onFailure = { SyncStatus.Failed("The site list couldn't be saved.") }
+            )
+
+            // §3.4: after the lists, what the desktop is asking for, or `{}`. An older desktop
+            // just closes the connection.
+            val request = withContext(dispatcher) { runCatching { connection!!.receive() }.getOrNull() }
+                ?.let { Approval.openFrame(key, Approval.REQUEST_AAD, it) }
+                ?.let { runCatching { frameJson.decodeFromString(Frame.serializer(), it) }.getOrNull() }
+            if (request != null && request.id.isNotEmpty()) {
+                val taken = connection!!
+                connection = null
+                handOver { approvals.handle(taken, request, key) }
             }
-        } catch (e: IOException) {
-            return SyncStatus.Failed("The desktop stopped answering.")
-        } ?: return SyncStatus.NoDesktop
-
-        val theirs = Seal.openMessage(key, reply)?.let { sitesRepository.parse(it).getOrNull() }
-            ?: return SyncStatus.Failed("The desktop's answer couldn't be read.")
-
-        return sitesRepository.merge(theirs).fold(
-            onSuccess = { SyncStatus.Synced(System.currentTimeMillis()) },
-            onFailure = { SyncStatus.Failed("The site list couldn't be saved.") }
-        )
+            return status
+        } finally {
+            connection?.close()
+        }
     }
 
     private companion object {
         const val SETTLE_MILLIS = 500L
+        const val WATCH_MILLIS = 2_000L
     }
 }
 
@@ -117,6 +172,7 @@ internal object Wire {
     /** UDP for finding the desktop, TCP for the exchange. The desktop listens on both. */
     const val PORT = 47825
     private const val PROBE = "rune-sync/1"
+    private val ASKING = " ask".toByteArray(Charsets.UTF_8)
     private const val MAX_MESSAGE_BYTES = 4 * 1024 * 1024
     private const val DISCOVER_MILLIS = 1_000
     private const val EXCHANGE_MILLIS = 5_000
@@ -128,13 +184,17 @@ internal object Wire {
         .mapNotNull { it.broadcast }
         .toSet() + InetAddress.getByName("255.255.255.255")
 
+    /** A desktop with the same master key; [asking]: it has a request waiting (§3.4). */
+    data class Found(val address: InetAddress, val asking: Boolean)
+
     /** Asks [targets]; the first desktop with the same master key answers. */
     fun discover(
         fingerprint: String,
         targets: Set<InetAddress> = broadcastTargets(),
         port: Int = PORT
-    ): InetAddress? = DatagramSocket().use { socket ->
+    ): Found? = DatagramSocket().use { socket ->
         val probe = "$PROBE $fingerprint".toByteArray(Charsets.UTF_8)
+        val asking = probe + ASKING
         socket.broadcast = true
         socket.soTimeout = DISCOVER_MILLIS
 
@@ -143,30 +203,53 @@ internal object Wire {
             runCatching { socket.send(DatagramPacket(probe, probe.size, target, port)) }
         }
 
-        val answer = DatagramPacket(ByteArray(probe.size), probe.size)
+        val answer = DatagramPacket(ByteArray(asking.size), asking.size)
         try {
             socket.receive(answer)
-            answer.address.takeIf { answer.data.copyOf(answer.length).contentEquals(probe) }
+            when {
+                answer.data.copyOf(answer.length).contentEquals(probe) -> Found(answer.address, asking = false)
+                answer.data.copyOf(answer.length).contentEquals(asking) -> Found(answer.address, asking = true)
+                else -> null
+            }
         } catch (_: SocketTimeoutException) {
             null
         }
     }
 
-    /** One message each way, each a length and then that many sealed bytes. */
-    fun exchange(desktop: InetAddress, message: ByteArray, port: Int = PORT): ByteArray =
-        Socket().use { socket ->
+    fun connect(desktop: InetAddress, port: Int = PORT): Connection {
+        val socket = Socket()
+        try {
             socket.connect(InetSocketAddress(desktop, port), EXCHANGE_MILLIS)
             socket.soTimeout = EXCHANGE_MILLIS
-
-            DataOutputStream(socket.getOutputStream()).run {
-                writeInt(message.size)
-                write(message)
-                flush()
-            }
-            DataInputStream(socket.getInputStream()).run {
-                val size = readInt()
-                if (size !in 0..MAX_MESSAGE_BYTES) throw IOException("an answer of $size bytes")
-                ByteArray(size).also(::readFully)
-            }
+        } catch (e: IOException) {
+            socket.close()
+            throw e
         }
+        return Connection(socket)
+    }
+
+    /** Messages each way, each a length and then that many sealed bytes. */
+    class Connection(private val socket: Socket) : Closeable {
+        private val input = DataInputStream(socket.getInputStream())
+        private val output = DataOutputStream(socket.getOutputStream())
+
+        fun send(message: ByteArray) = output.run {
+            writeInt(message.size)
+            write(message)
+            flush()
+        }
+
+        fun receive(): ByteArray {
+            val size = input.readInt()
+            if (size !in 0..MAX_MESSAGE_BYTES) throw IOException("an answer of $size bytes")
+            return ByteArray(size).also(input::readFully)
+        }
+
+        /** An approval waits on its user, not the network's usual few seconds. */
+        fun waitUpTo(millis: Int) {
+            socket.soTimeout = millis
+        }
+
+        override fun close() = socket.close()
+    }
 }
