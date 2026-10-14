@@ -1,0 +1,72 @@
+name: Release
+
+# Builds a signed release and publishes it to Google Play.
+#
+# Trigger: push a version tag (v1.0.1), which scripts/release.sh does after
+# bumping versionCode/versionName, or run manually from the Actions tab.
+#
+# Required repository secrets:
+#   KEYSTORE_BASE64             upload keystore, base64-encoded (base64 -w0 keystore.jks)
+#   KEYSTORE_PASSWORD           keystore password
+#   KEY_ALIAS                   key alias
+#   KEY_PASSWORD                key password
+#   PLAY_SERVICE_ACCOUNT_JSON   Google Cloud service account key linked in Play Console
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Provide signing config
+        # printf '%s' writes the secret values byte-for-byte; a heredoc would let the
+        # shell expand $ and backticks inside passwords. The keytool check fails the
+        # job in seconds if the keystore/password/alias don't match, instead of after
+        # a full build.
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload-keystore.jks"
+          {
+            printf 'KEYSTORE_PATH=%s\n' "$RUNNER_TEMP/upload-keystore.jks"
+            printf 'KEYSTORE_PASSWORD=%s\n' "$KEYSTORE_PASSWORD"
+            printf 'KEY_ALIAS=%s\n' "$KEY_ALIAS"
+            printf 'KEY_PASSWORD=%s\n' "$KEY_PASSWORD"
+          } > .env
+          keytool -list -keystore "$RUNNER_TEMP/upload-keystore.jks" \
+            -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Build release bundle
+        run: ./gradlew bundleRelease
+
+      - name: Publish to Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: bassamalim.rune
+          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          # For a staged rollout instead of a full release, set status: inProgress
+          # and e.g. userFraction: 0.2, then complete it from Play Console.
+          track: production
+          status: completed
+
+      - name: Remove signing material
+        if: always()
+        run: rm -f .env "$RUNNER_TEMP/upload-keystore.jks"

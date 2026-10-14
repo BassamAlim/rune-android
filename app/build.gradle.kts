@@ -30,8 +30,8 @@ android {
         // 30 is where a Keystore key can demand a fresh biometric for every single use.
         minSdk = 30
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 100
+        versionName = "1.0.0"
     }
 
     signingConfigs {
